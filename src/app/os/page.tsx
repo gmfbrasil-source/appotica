@@ -32,17 +32,32 @@ export default function OSPage() {
 
   async function handleAddOrder(e: React.FormEvent) {
     e.preventDefault();
+
+    // 1. Busca o shop_id do perfil do usuário logado
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('shop_id')
+      .single();
+
+    if (!profile?.shop_id) {
+      alert('Erro: Você não está vinculado a nenhuma ótica.');
+      return;
+    }
+
     const { error } = await supabase
       .from('service_orders')
       .insert([{
         ...formData,
         total_value: parseFloat(formData.total_value),
+        shop_id: profile.shop_id
       }]);
     
     if (!error) {
       setShowForm(false);
       setFormData({ customer_id: '', total_value: '', scheduled_date: '', status: 'Open', notes: '' });
       fetchOrders();
+    } else {
+      alert('Erro ao salvar: ' + error.message);
     }
   }
 

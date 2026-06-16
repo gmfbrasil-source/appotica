@@ -26,15 +26,32 @@ export default function CustomersPage() {
 
   async function handleAddCustomer(e: React.FormEvent) {
     e.preventDefault();
-    // Note: In a real app, you'd get the shop_id from the profile
+    
+    // 1. Busca o shop_id do perfil do usuário logado
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('shop_id')
+      .single();
+
+    if (!profile?.shop_id) {
+      alert('Erro: Você não está vinculado a nenhuma ótica. Por favor, configure seu perfil.');
+      return;
+    }
+
+    // 2. Insere o cliente com o shop_id
     const { error } = await supabase
       .from('customers')
-      .insert([formData]);
+      .insert([{ 
+        ...formData, 
+        shop_id: profile.shop_id 
+      }]);
     
     if (!error) {
       setShowForm(false);
       setFormData({ name: '', phone: '', email: '', cpf: '' });
       fetchCustomers();
+    } else {
+      alert('Erro ao salvar: ' + error.message);
     }
   }
 

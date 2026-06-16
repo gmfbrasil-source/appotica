@@ -32,17 +32,32 @@ export default function FinancePage() {
 
   async function handleAddRecord(e: React.FormEvent) {
     e.preventDefault();
+
+    // 1. Busca o shop_id do perfil do usuário logado
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('shop_id')
+      .single();
+
+    if (!profile?.shop_id) {
+      alert('Erro: Você não está vinculado a nenhuma ótica.');
+      return;
+    }
+
     const { error } = await supabase
       .from('financial_records')
       .insert([{
         ...formData,
         amount: parseFloat(formData.amount),
+        shop_id: profile.shop_id
       }]);
     
     if (!error) {
       setShowForm(false);
       setFormData({ type: 'Income', description: '', amount: '', due_date: new Date().toISOString().split('T')[0], status: 'Pending' });
       fetchRecords();
+    } else {
+      alert('Erro ao salvar: ' + error.message);
     }
   }
 
