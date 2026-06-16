@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase';
 import { Plus, Search, User } from 'lucide-react';
 
 export default function CustomersPage() {
-  const [customers, setCustomers] = useState([]);
+  const [customers, setCustomers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({ name: '', phone: '', email: '', cpf: '' });

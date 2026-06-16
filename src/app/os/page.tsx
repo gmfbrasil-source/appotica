@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase';
 import { Plus, Package, Truck, CheckCircle, Clock } from 'lucide-react';
 
 export default function OSPage() {
-  const [orders, setOrders] = useState([]);
+  const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({

@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase';
 import { Plus, ArrowUpCircle, ArrowDownCircle, Calendar } from 'lucide-react';
 
 export default function FinancePage() {
-  const [records, setRecords] = useState([]);
+  const [records, setRecords] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
