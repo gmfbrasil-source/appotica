@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import { Plus, Search, User, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
 
 export default function CustomersPage() {
