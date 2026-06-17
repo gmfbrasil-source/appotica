@@ -157,7 +157,8 @@ export default function Dashboard() {
             <div className="relative z-10">
               <h2 className="text-lg font-bold mb-4">Ações Rápidas</h2>
               <div className="grid grid-cols-1 gap-3">
-                <QuickActionLink href="/customers" label="Novo Cliente" icon={<Plus size={18} />} />
+                <QuickActionLink href="/sales" label="Nova Venda" icon={<Plus size={18} />} />
+                <QuickActionLink href="/customers" label="Novo Cliente" icon={<Users size={18} />} />
                 <QuickActionLink href="/os" label="Nova O.S." icon={<ClipboardList size={18} />} />
                 <QuickActionLink href="/finance" label="Lançar Conta" icon={<DollarSign size={18} />} />
               </div>

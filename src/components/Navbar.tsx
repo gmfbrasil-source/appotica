@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import { Home, Users, DollarSign, ClipboardList } from 'lucide-react';
+import { Home, Users, DollarSign, ClipboardList, ShoppingBag } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 
 export default function Navbar() {
@@ -20,6 +20,10 @@ export default function Navbar() {
       <Link href="/customers" className={`flex flex-col items-center transition-colors ${pathname === '/customers' ? 'text-blue-600' : 'text-gray-600 hover:text-blue-600'}`}>
         <Users size={24} />
         <span className="text-xs">Clientes</span>
+      </Link>
+      <Link href="/sales" className={`flex flex-col items-center transition-colors ${pathname === '/sales' ? 'text-blue-600' : 'text-gray-600 hover:text-blue-600'}`}>
+        <ShoppingBag size={24} />
+        <span className="text-xs">Vendas</span>
       </Link>
       <Link href="/os" className={`flex flex-col items-center transition-colors ${pathname === '/os' ? 'text-blue-600' : 'text-gray-600 hover:text-blue-600'}`}>
         <ClipboardList size={24} />
