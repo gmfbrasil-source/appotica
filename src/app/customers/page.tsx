@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Plus, Search, User } from 'lucide-react';
+import Link from 'next/link';
 
 export default function CustomersPage() {
   const [customers, setCustomers] = useState<any[]>([]);
@@ -168,7 +168,11 @@ export default function CustomersPage() {
       ) : (
         <div className="space-y-3">
           {filteredCustomers.map((customer: any) => (
-            <div key={customer.id} className="flex items-center p-4 bg-white rounded-xl border border-gray-100 shadow-sm hover:border-blue-200 transition-all cursor-pointer">
+            <Link 
+              key={customer.id} 
+              href={`/customers/${customer.id}`}
+              className="flex items-center p-4 bg-white rounded-xl border border-gray-100 shadow-sm hover:border-blue-200 transition-all cursor-pointer"
+            >
               <div className="bg-gray-100 p-2 rounded-full mr-4">
                 <User className="text-gray-600" size={20} />
               </div>
@@ -176,11 +180,14 @@ export default function CustomersPage() {
                 <p className="font-semibold text-gray-800">{customer.name}</p>
                 <p className="text-xs text-gray-500">{customer.phone || 'Sem telefone'}</p>
               </div>
-              <div className="text-right">
-                {customer.cpf && <span className="text-xs bg-gray-100 px-2 py-1 rounded-full font-medium mr-2">CPF: {customer.cpf}</span>}
-                {customer.cnpj && <span className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded-full font-medium">CNPJ: {customer.cnpj}</span>}
+              <div className="flex items-center gap-3">
+                <div className="text-right">
+                  {customer.cpf && <span className="text-xs bg-gray-100 px-2 py-1 rounded-full font-medium mr-2">CPF: {customer.cpf}</span>}
+                  {customer.cnpj && <span className="text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded-full font-medium">CNPJ: {customer.cnpj}</span>}
+                </div>
+                <ArrowRight size={16} className="text-gray-300" />
               </div>
-            </div>
+            </Link>
           ))}
           {filteredCustomers.length === 0 && (
             <div className="text-center py-10 text-gray-500">Nenhum resultado encontrado.</div>

@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useParams } from 'next/navigation';
-import { Printer, ArrowLeft, FileText, User, Calendar, Package } from 'lucide-react';
+import { Printer, ArrowLeft, FileText, User, Calendar, Package, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 
 export default function OSDetailPage() {
@@ -62,6 +62,26 @@ export default function OSDetailPage() {
     }
   }
 
+  async function handleDeleteOS() {
+    if (!confirm('ATENÇÃO: Esta ação excluirá a Ordem de Serviço e TODOS os lançamentos financeiros vinculados a ela. Deseja realmente excluir?')) {
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('service_orders')
+        .delete()
+        .eq('id', osId);
+
+      if (error) throw error;
+
+      alert('Ordem de Serviço e registros financeiros excluídos com sucesso.');
+      window.location.href = '/os';
+    } catch (error: any) {
+      alert('Erro ao excluir: ' + error.message);
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -81,20 +101,28 @@ export default function OSDetailPage() {
 
   return (
     <div className="p-4 md:p-8 max-w-3xl mx-auto pb-24">
-      <div className="flex items-center justify-between mb-6">
-        <Link 
-          href="/os" 
-          className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition-colors font-medium"
-        >
-          <ArrowLeft size={20} /> Voltar para O.S.
-        </Link>
-        <button 
-          onClick={handlePrint}
-          className="bg-blue-600 text-white px-4 py-2 rounded-xl flex items-center gap-2 hover:bg-blue-700 transition-all shadow-md shadow-blue-100 font-bold"
-        >
-          <Printer size={18} /> Imprimir O.S.
-        </button>
-      </div>
+        <div className="flex items-center justify-between mb-6">
+          <Link 
+            href="/os" 
+            className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition-colors font-medium"
+          >
+            <ArrowLeft size={20} /> Voltar para O.S.
+          </Link>
+          <div className="flex gap-3">
+            <button 
+              onClick={handlePrint}
+              className="bg-blue-600 text-white px-4 py-2 rounded-xl flex items-center gap-2 hover:bg-blue-700 transition-all shadow-md shadow-blue-100 font-bold"
+            >
+              <Printer size={18} /> Imprimir O.S.
+            </button>
+            <button 
+              onClick={handleDeleteOS}
+              className="bg-red-50 text-red-600 px-4 py-2 rounded-xl flex items-center gap-2 hover:bg-red-100 transition-all font-bold border border-red-100"
+            >
+              <Trash2 size={18} /> Excluir
+            </button>
+          </div>
+        </div>
 
       <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="bg-gray-900 text-white p-6">
