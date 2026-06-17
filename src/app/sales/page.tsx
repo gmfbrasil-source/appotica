@@ -65,7 +65,7 @@ export default function SalesPage() {
   });
 
   // Estado da venda realizada com sucesso (para modal de impressão)
-  const [createdOS, setCreatedOS] = useState<any | null>(null);
+  const [createdOS, setCreatedOS] = useState<any>(null);
   const [showPrintModal, setShowPrintModal] = useState(false);
 
   useEffect(() => {
