@@ -13,7 +13,7 @@ import {
   FileText, 
   Plus, 
   Loader2, 
-  Eye 
+  ClipboardList
 } from 'lucide-react';
 
 export default function SalesPage() {
