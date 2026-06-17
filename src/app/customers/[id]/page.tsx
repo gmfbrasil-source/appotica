@@ -62,19 +62,23 @@ export default function CustomerDetailsPage() {
     }
   }
 
-  const totalPaid = (financials || [])
-    .filter(f => f?.status === 'Paid')
-    .reduce((acc, curr) => acc + (Number(curr?.amount) || 0), 0);
+  const totalPaid = (financials || []).reduce((acc, curr) => {
+    return acc + (curr?.status === 'Paid' ? (Number(curr?.amount) || 0) : 0);
+  }, 0);
 
-  const totalPending = (financials || [])
-    .filter(f => f?.status === 'Pending')
-    .reduce((acc, curr) => acc + (Number(curr?.amount) || 0), 0);
+  const totalPending = (financials || []).reduce((acc, curr) => {
+    return acc + (curr?.status === 'Pending' ? (Number(curr?.amount) || 0) : 0);
+  }, 0);
 
   const overdueRecords = (financials || []).filter(f => {
-    if (!f?.due_date) return false;
-    const dueDate = new Date(f.due_date);
-    const today = new Date();
-    return f.status === 'Pending' && dueDate < today;
+    if (!f || !f.due_date) return false;
+    try {
+      const dueDate = new Date(f.due_date);
+      const today = new Date();
+      return f.status === 'Pending' && dueDate < today;
+    } catch {
+      return false;
+    }
   });
 
   function sendWhatsAppReminder() {
@@ -254,8 +258,8 @@ export default function CustomerDetailsPage() {
                   {financials.length > 0 ? financials.map((fin) => (
                     <tr key={fin.id} className="hover:bg-gray-50 transition-colors">
                       <td className="py-3 px-2 font-medium text-gray-800">{fin.description}</td>
-                      <td className="py-3 px-2 text-gray-500">{new Date(fin.due_date).toLocaleDateString('pt-BR')}</td>
-                      <td className="py-3 px-2 font-bold">R$ {fin.amount.toFixed(2)}</td>
+                      <td className="py-3 px-2 text-gray-500">{fin?.due_date ? new Date(fin.due_date).toLocaleDateString('pt-BR') : '---'}</td>
+                      <td className="py-3 px-2 font-bold">R$ {(fin?.amount || 0).toFixed(2)}</td>
                       <td className="py-3 px-2">
                         <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase ${
                           fin.status === 'Paid' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'
