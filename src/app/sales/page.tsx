@@ -93,6 +93,48 @@ export default function SalesPage() {
     setLoading(true);
 
     try {
+      // --- VALIDAÇÃO DE SANIDADE (SANE CHECK) ---
+      const warnings: string[] = [];
+      
+      // Validação de Esférico/Cilíndrico extremos (> |10| ou |6|)
+      const valuesToCheck = [
+        { name: 'Esférico OD', val: prescription.od_sphere, limit: 10 },
+        { name: 'Cilíndrico OD', val: prescription.od_cylinder, limit: 6 },
+        { name: 'Esférico OE', val: prescription.oe_sphere, limit: 10 },
+        { name: 'Cilíndrico OE', val: prescription.oe_cylinder, limit: 6 },
+        { name: 'Adição', val: prescription.addition, limit: 4 },
+      ];
+
+      valuesToCheck.forEach(item => {
+        const num = Math.abs(parseFloat(item.val) || 0);
+        if (num > item.limit) {
+          warnings.push(`O valor de ${item.name} (${item.val}) está muito alto. Verifique se está correto.`);
+        }
+      });
+
+      // Validação de Eixo (0-180)
+      const axisOD = parseInt(prescription.od_axis);
+      const axisOE = parseInt(prescription.oe_axis);
+      if (isNaN(axisOD) || axisOD < 0 || axisOD > 180) warnings.push('O Eixo OD deve estar entre 0 e 180.');
+      if (isNaN(axisOE) || axisOE < 0 || axisOE > 180) warnings.push('O Eixo OE deve estar entre 0 e 180.');
+
+      // Validação de DP (40-80)
+      const dp = parseFloat(prescription.dp);
+      if (!isNaN(dp) && (dp < 40 || dp > 80)) {
+        warnings.push('A Distância Pupilar (DP) parece incomum (fora de 40-80mm).');
+      }
+
+      if (warnings.length > 0) {
+        const confirmed = window.confirm(
+          `Atenção: Foram encontrados valores incomuns:\n\n${warnings.join('\n')}\n\nDeseja continuar com a venda mesmo assim?`
+        );
+        if (!confirmed) {
+          setLoading(false);
+          return;
+        }
+      }
+      // --- FIM DA VALIDAÇÃO ---
+
       // 1. Obter o shop_id
       const { data: profile, error: profileErr } = await supabase
         .from('profiles')

@@ -19,25 +19,29 @@ export default function OSDetailPage() {
   async function fetchOSDetails() {
     setLoading(true);
     try {
-      // Busca a O.S., os dados do cliente e a última receita vinculada
-      const { data, error } = await supabase
+      const { data: osDataResult, error: osError } = await supabase
         .from('service_orders')
         .select('*, customers(*)')
         .eq('id', osId)
         .single();
 
-      if (error) throw error;
+      if (osError) throw osError;
 
-      // Busca a receita mais recente para este cliente
-      const { data: prescription } = await supabase
+      const customerId = osDataResult.customers?.id || osDataResult.customer_id;
+      
+      const { data: prescription, error: prescError } = await supabase
         .from('prescriptions')
         .select('*')
-        .eq('customer_id', osData?.customers?.id || osData?.customer_id)
+        .eq('customer_id', customerId)
         .order('created_at', { ascending: false })
         .limit(1)
         .single();
 
-      setOsData({ ...data, prescription });
+      if (prescError && prescError.code !== 'PGRST116') { 
+        console.warn('Erro ao buscar receita:', prescError.message);
+      }
+
+      setOsData({ ...osDataResult, prescription });
     } catch (error: any) {
       console.error('Erro ao carregar O.S:', error);
       alert('Erro ao carregar detalhes da Ordem de Serviço.');
@@ -93,7 +97,6 @@ export default function OSDetailPage() {
       </div>
 
       <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
-        {/* Header da O.S. */}
         <div className="bg-gray-900 text-white p-6">
           <div className="flex justify-between items-start">
             <div>
@@ -110,7 +113,6 @@ export default function OSDetailPage() {
         </div>
 
         <div className="p-6 space-y-8">
-          {/* Seção Cliente */}
           <section className="space-y-3">
             <h2 className="text-sm font-bold text-gray-400 uppercase flex items-center gap-2">
               <User size={16} /> Dados do Cliente
@@ -135,7 +137,6 @@ export default function OSDetailPage() {
             </div>
           </section>
 
-          {/* Seção Grau / Receita */}
           <section className="space-y-3">
             <h2 className="text-sm font-bold text-gray-400 uppercase flex items-center gap-2">
               <FileText size={16} /> Prescrição Óptica
@@ -184,7 +185,6 @@ export default function OSDetailPage() {
             )}
           </section>
 
-          {/* Seção Laboratório */}
           <section className="space-y-3">
             <h2 className="text-sm font-bold text-gray-400 uppercase flex items-center gap-2">
               <Package size={16} /> Especificações de Laboratório
@@ -193,17 +193,17 @@ export default function OSDetailPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <p className="text-xs text-gray-500">Armação</p>
-                  <p className="font-bold text-gray-800">{osData.notes?.split('\\n')[0]?.replace('Armação: ', '') || 'Não informado'}</p>
+                  <p className="font-bold text-gray-800">{osData.notes?.split('\n')[0]?.replace('Armação: ', '') || 'Não informado'}</p>
                 </div>
                 <div>
                   <p className="text-xs text-gray-500">Lentes</p>
-                  <p className="font-bold text-gray-800">{osData.notes?.split('\\n')[1]?.replace('Lente: ', '') || 'Não informado'}</p>
+                  <p className="font-bold text-gray-800">{osData.notes?.split('\n')[1]?.replace('Lente: ', '') || 'Não informado'}</p>
                 </div>
               </div>
               <div>
                 <p className="text-xs text-gray-500">Observações Adicionais</p>
                 <p className="text-sm text-gray-700 bg-white p-3 rounded-xl border border-gray-200 mt-1">
-                  {osData.notes?.split('\\n')[2]?.replace('Observações: ', '') || 'Nenhuma observação.'}
+                  {osData.notes?.split('\n')[2]?.replace('Observações: ', '') || 'Nenhuma observação.'}
                 </p>
               </div>
             </div>
@@ -211,7 +211,6 @@ export default function OSDetailPage() {
         </div>
       </div>
 
-      {/* ÁREA INVISÍVEL PARA IMPRESSÃO (id=print-section) */}
       <div style={{ display: 'none' }}>
         <div ref={printAreaRef} className="p-8 text-black font-mono text-sm bg-white w-[80mm]">
           <div className="text-center border-b-2 border-black pb-4 mb-4">
@@ -250,9 +249,9 @@ export default function OSDetailPage() {
           )}
           <div className="mb-4 space-y-1">
             <p className="font-bold text-xs uppercase border-b">Especificações</p>
-            <p><strong>Armação:</strong> {osData.notes?.split('\\n')[0]?.replace('Armação: ', '') || '---'}</p>
-            <p><strong>Lentes:</strong> {osData.notes?.split('\\n')[1]?.replace('Lente: ', '') || '---'}</p>
-            <p><strong>Obs:</strong> {osData.notes?.split('\\n')[2]?.replace('Observações: ', '') || '---'}</p>
+            <p><strong>Armação:</strong> {osData.notes?.split('\n')[0]?.replace('Armação: ', '') || '---'}</p>
+            <p><strong>Lentes:</strong> {osData.notes?.split('\n')[1]?.replace('Lente: ', '') || '---'}</p>
+            <p><strong>Obs:</strong> {osData.notes?.split('\n')[2]?.replace('Observações: ', '') || '---'}</p>
           </div>
           <div className="text-center text-[10px] mt-10 border-t pt-2">
             <p>Impresso via AppÓtica - Sistema de Gestão</p>
