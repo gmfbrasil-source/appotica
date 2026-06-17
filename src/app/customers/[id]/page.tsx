@@ -62,15 +62,16 @@ export default function CustomerDetailsPage() {
     }
   }
 
-  const totalPaid = financials
-    .filter(f => f.status === 'Paid')
-    .reduce((acc, curr) => acc + curr.amount, 0);
+  const totalPaid = (financials || [])
+    .filter(f => f?.status === 'Paid')
+    .reduce((acc, curr) => acc + (Number(curr?.amount) || 0), 0);
 
-  const totalPending = financials
-    .filter(f => f.status === 'Pending')
-    .reduce((acc, curr) => acc + curr.amount, 0);
+  const totalPending = (financials || [])
+    .filter(f => f?.status === 'Pending')
+    .reduce((acc, curr) => acc + (Number(curr?.amount) || 0), 0);
 
-  const overdueRecords = financials.filter(f => {
+  const overdueRecords = (financials || []).filter(f => {
+    if (!f?.due_date) return false;
     const dueDate = new Date(f.due_date);
     const today = new Date();
     return f.status === 'Pending' && dueDate < today;
@@ -82,7 +83,7 @@ export default function CustomerDetailsPage() {
       return;
     }
 
-    const phone = customer.phone.replace(/\D/g, '');
+    const phone = String(customer.phone).replace(/\D/g, '');
     const message = `Olá ${customer.name}, tudo bem? Aqui é da Ótica. Notamos que você possui parcelas em aberto no valor de R$ ${totalPending.toFixed(2)}. Podemos te ajudar a regularizar?`;
     const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
     window.open(url, '_blank');
@@ -128,15 +129,18 @@ export default function CustomerDetailsPage() {
           </div>
         </div>
         <div className="flex gap-3 w-full md:w-auto">
-          {customer.phone && (
+          {customer?.phone && (
             <button 
-              onClick={() => window.open(`https://wa.me/${customer.phone.replace(/\D/g, '')}`, '_blank')}
+              onClick={() => {
+                const phone = String(customer.phone).replace(/\D/g, '');
+                window.open(`https://wa.me/${phone}`, '_blank');
+              }}
               className="flex-1 md:flex-none bg-green-500 text-white px-4 py-2 rounded-xl flex items-center justify-center gap-2 hover:bg-green-600 transition-all font-bold shadow-sm"
             >
               <MessageCircle size={18} /> WhatsApp
             </button>
           )}
-          {overdueRecords.length > 0 && (
+          {overdueRecords && overdueRecords.length > 0 && (
             <button 
               onClick={sendWhatsAppReminder}
               className="flex-1 md:flex-none bg-red-500 text-white px-4 py-2 rounded-xl flex items-center justify-center gap-2 hover:bg-red-600 transition-all font-bold shadow-sm"
