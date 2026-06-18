@@ -1,7 +1,12 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Plus, ArrowUpCircle, ArrowDownCircle, Calendar, Trash2, Search, Check, AlertCircle } from 'lucide-react';
+import { Plus, ArrowUpCircle, ArrowDownCircle, Calendar, Trash2, Search, Check, AlertCircle, CheckCircle } from 'lucide-react';
+
+function getLocalDate(date?: Date): string {
+  const d = date || new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
 
 export default function FinancePage() {
   const [records, setRecords] = useState<any[]>([]);
@@ -94,6 +99,20 @@ export default function FinancePage() {
       fetchRecords();
     } else {
       alert('Erro ao excluir: ' + error.message);
+    }
+  }
+
+  async function handleMarkAsPaid(id: string, e: React.MouseEvent) {
+    e.stopPropagation();
+    const { error } = await supabase
+      .from('financial_records')
+      .update({ status: 'Paid', payment_date: getLocalDate() })
+      .eq('id', id);
+
+    if (!error) {
+      fetchRecords();
+    } else {
+      alert('Erro ao marcar como pago: ' + error.message);
     }
   }
 
@@ -372,7 +391,7 @@ export default function FinancePage() {
                 </div>
               </div>
 
-              <div className="text-right flex items-center gap-4">
+              <div className="text-right flex items-center gap-2">
                 <div>
                   <p className={`font-bold ${record.type === 'Income' ? 'text-green-600' : 'text-red-600'}`}>
                     {record.type === 'Income' ? '+' : '-'} R$ {record.amount.toFixed(2)}
@@ -382,6 +401,16 @@ export default function FinancePage() {
                   </p>
                 </div>
                 
+                {record.status === 'Pending' && (
+                  <button 
+                    onClick={(e) => handleMarkAsPaid(record.id, e)}
+                    title="Marcar como pago"
+                    className="text-green-500 hover:text-green-700 p-1.5 rounded-lg hover:bg-green-50 transition-colors"
+                  >
+                    <CheckCircle size={20} />
+                  </button>
+                )}
+
                 {/* Botão de Exclusão (Lixeira) */}
                 <button 
                   onClick={(e) => handleDeleteRecord(record.id, e)}

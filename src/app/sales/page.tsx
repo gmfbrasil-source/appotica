@@ -16,6 +16,11 @@ import {
   ClipboardList
 } from 'lucide-react';
 
+function getLocalDate(date?: Date): string {
+  const d = date || new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
 export default function SalesPage() {
   const [loading, setLoading] = useState(false);
   const [customers, setCustomers] = useState<any[]>([]);
@@ -53,13 +58,14 @@ export default function SalesPage() {
     frame: '',
     lenses: '',
     total_value: '',
-    scheduled_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // 7 dias de prazo padrão
+    scheduled_date: getLocalDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)),
     notes: ''
   });
 
   // Dados de Pagamento / Financeiro
   const [payment, setPayment] = useState({
     method: 'Pix', // Pix, Cartao_Credito, Cartao_Debito, Dinheiro, Boleto
+    downPayment: '',
     installments: '1',
     status: 'Paid' // Paid, Pending
   });
@@ -218,23 +224,62 @@ export default function SalesPage() {
       if (osErr) throw osErr;
 
       // 5. Cadastrar lançamentos financeiros no caixa
-      const instCount = parseInt(payment.installments) || 1;
-      const amountPerInstallment = totalVal / instCount;
-
       const financialInserts = [];
-      const baseDate = new Date();
+      const hoje = new Date();
+      const hojeStr = getLocalDate(hoje);
+      const entrada = Math.min(parseFloat(payment.downPayment) || 0, totalVal);
+      const restante = Math.round((totalVal - entrada) * 100) / 100;
+      const instCount = Math.max(parseInt(payment.installments) || 0, 0);
+      const isCredit = payment.method === 'Cartao_Credito';
 
-      for (let i = 0; i < instCount; i++) {
-        const dueDate = new Date(baseDate.getFullYear(), baseDate.getMonth() + i, baseDate.getDate());
-        
+      // Entrada (só se > 0)
+      if (entrada > 0) {
+        const entryDue = isCredit ? new Date(hoje.getFullYear(), hoje.getMonth() + 1, hoje.getDate()) : hoje;
         financialInserts.push({
           shop_id: shopId,
           type: 'Income',
-          description: `Venda O.S. #${osData.id.slice(0,8)} ${instCount > 1 ? `(Parc. ${i+1}/${instCount})` : ''}`,
-          amount: amountPerInstallment,
-          due_date: dueDate.toISOString().split('T')[0],
-          payment_date: payment.status === 'Paid' && i === 0 ? baseDate.toISOString().split('T')[0] : null,
-          status: i === 0 ? payment.status : 'Pending', // Primeira parcela conforme status, as outras pendentes
+          description: `Venda O.S. #${osData.id.slice(0,8)} (Entrada)`,
+          amount: entrada,
+          due_date: getLocalDate(entryDue),
+          payment_date: payment.status === 'Paid' ? hojeStr : null,
+          status: payment.status,
+          order_id: osData.id,
+          customer_id: finalCustomerId
+        });
+      }
+
+      // Parcelas restantes
+      for (let i = 0; i < instCount && restante > 0; i++) {
+        const baseValor = restante / instCount;
+        let valorParcela = Math.floor(baseValor * 100) / 100;
+        if (i === instCount - 1) {
+          valorParcela = Math.round((restante - valorParcela * (instCount - 1)) * 100) / 100;
+        }
+        const mesesOffset = isCredit ? i + 1 : i;
+        const due = new Date(hoje.getFullYear(), hoje.getMonth() + mesesOffset, hoje.getDate());
+        financialInserts.push({
+          shop_id: shopId,
+          type: 'Income',
+          description: `Venda O.S. #${osData.id.slice(0,8)} (Parc. ${i+1}/${instCount})`,
+          amount: valorParcela,
+          due_date: getLocalDate(due),
+          payment_date: null,
+          status: 'Pending',
+          order_id: osData.id,
+          customer_id: finalCustomerId
+        });
+      }
+
+      // Se não tem entrada nem parcelas, lança à vista
+      if (entrada === 0 && instCount === 0) {
+        financialInserts.push({
+          shop_id: shopId,
+          type: 'Income',
+          description: `Venda O.S. #${osData.id.slice(0,8)} (À Vista)`,
+          amount: totalVal,
+          due_date: hojeStr,
+          payment_date: payment.status === 'Paid' ? hojeStr : null,
+          status: payment.status,
           order_id: osData.id,
           customer_id: finalCustomerId
         });
@@ -285,10 +330,10 @@ export default function SalesPage() {
       frame: '',
       lenses: '',
       total_value: '',
-      scheduled_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+      scheduled_date: getLocalDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)),
       notes: ''
     });
-    setPayment({ method: 'Pix', installments: '1', status: 'Paid' });
+    setPayment({ method: 'Pix', downPayment: '', installments: '1', status: 'Paid' });
   }
 
   const printAreaRef = useRef<HTMLDivElement>(null);
@@ -571,7 +616,7 @@ export default function SalesPage() {
           <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
             <CreditCard size={20} className="text-blue-600" /> 4. Condição de Pagamento (Financeiro)
           </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Forma de Pagamento</label>
               <select 
@@ -587,25 +632,38 @@ export default function SalesPage() {
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Nº Parcelas</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Valor de Entrada</label>
+              <input 
+                type="number" 
+                step="0.01"
+                min="0"
+                className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none"
+                placeholder="R$ 0,00"
+                value={payment.downPayment}
+                onChange={(e) => setPayment({...payment, downPayment: e.target.value})}
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Parcelas Restantes</label>
               <select 
                 className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none"
                 value={payment.installments}
                 onChange={(e) => setPayment({...payment, installments: e.target.value})}
               >
+                <option value="0">0x (Só Entrada)</option>
                 {[...Array(12)].map((_, i) => (
                   <option key={i+1} value={i+1}>{i+1}x</option>
                 ))}
               </select>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Status do Lançamento</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Status da Entrada</label>
               <select 
                 className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none"
                 value={payment.status}
                 onChange={(e) => setPayment({...payment, status: e.target.value})}
               >
-                <option value="Paid">Já Pago / Recebido</option>
+                <option value="Paid">Pago / Recebido</option>
                 <option value="Pending">A Receber (Aberto)</option>
               </select>
             </div>
