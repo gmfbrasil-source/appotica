@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Calendar, ArrowUpCircle, ArrowDownCircle, CheckCircle, DollarSign, FileText, Loader2, X, AlertCircle } from 'lucide-react';
+import { Calendar, ArrowUpCircle, ArrowDownCircle, CheckCircle, DollarSign, FileText, Loader2, X, AlertCircle, Clock } from 'lucide-react';
 
 function getLocalDate(date?: Date): string {
   const d = date || new Date();
@@ -24,10 +24,13 @@ export default function CaixaPage() {
 
   async function fetchRecords() {
     setLoading(true);
+    // Sincronizado com o financeiro:
+    // - payment_date = hoje (já pagos/recebidos)
+    // - due_date = hoje AND status = Pending (a vencer hoje)
     const { data, error } = await supabase
       .from('financial_records')
       .select('*, customers(name, cnpj)')
-      .eq('payment_date', selectedDate)
+      .or(`payment_date.eq.${selectedDate},and(due_date.eq.${selectedDate},status.eq.Pending)`)
       .order('created_at', { ascending: false });
 
     if (!error) setRecords(data || []);
@@ -62,15 +65,16 @@ export default function CaixaPage() {
       const { data: profile } = await supabase.from('profiles').select('shop_id').single();
       if (!profile?.shop_id) throw new Error('Perfil sem loja vinculada.');
 
-      const totalIncome = records
+      // Fechamento considera só os que foram efetivamente pagos/recebidos no dia
+      const paidRecords = records.filter(r => r.status === 'Paid');
+      const totalIncome = paidRecords
         .filter(r => r.type === 'Income')
         .reduce((acc, r) => acc + r.amount, 0);
-      const totalExpense = records
+      const totalExpense = paidRecords
         .filter(r => r.type === 'Expense')
         .reduce((acc, r) => acc + r.amount, 0);
       const balance = totalIncome - totalExpense;
 
-      // Check if already closed for this date
       if (closings.length > 0) {
         if (!confirm('Este dia já possui fechamento. Deseja criar outro mesmo assim?')) {
           setClosing(false);
@@ -100,13 +104,13 @@ export default function CaixaPage() {
     }
   }
 
-  const totalIncome = records
-    .filter(r => r.type === 'Income')
-    .reduce((acc, r) => acc + r.amount, 0);
-  const totalExpense = records
-    .filter(r => r.type === 'Expense')
-    .reduce((acc, r) => acc + r.amount, 0);
-  const balance = totalIncome - totalExpense;
+  const paidRecords = records.filter(r => r.status === 'Paid');
+  const pendingRecords = records.filter(r => r.status === 'Pending');
+
+  const totalIncomePaid = paidRecords.filter(r => r.type === 'Income').reduce((acc, r) => acc + r.amount, 0);
+  const totalExpensePaid = paidRecords.filter(r => r.type === 'Expense').reduce((acc, r) => acc + r.amount, 0);
+  const totalIncomePending = pendingRecords.filter(r => r.type === 'Income').reduce((acc, r) => acc + r.amount, 0);
+  const totalExpensePending = pendingRecords.filter(r => r.type === 'Expense').reduce((acc, r) => acc + r.amount, 0);
   const alreadyClosed = closings.length > 0;
 
   return (
@@ -117,7 +121,6 @@ export default function CaixaPage() {
         </h1>
       </div>
 
-      {/* Filtro de Data */}
       <div className="mb-6">
         <label className="block text-sm font-medium text-gray-700 mb-1">Data do Caixa</label>
         <div className="relative">
@@ -131,21 +134,23 @@ export default function CaixaPage() {
         </div>
       </div>
 
-      {/* Cards de Resumo */}
-      <div className="grid grid-cols-3 gap-3 mb-6">
+      {/* 4 cards: Recebido / Pago / A Receber / A Pagar */}
+      <div className="grid grid-cols-2 gap-3 mb-6">
         <div className="bg-green-50 p-4 rounded-2xl border border-green-100">
-          <p className="text-green-600 text-xs font-medium mb-1">Recebido</p>
-          <p className="text-xl font-bold text-green-700">R$ {totalIncome.toFixed(2)}</p>
+          <p className="text-green-600 text-xs font-medium mb-1">Recebido Hoje</p>
+          <p className="text-xl font-bold text-green-700">R$ {totalIncomePaid.toFixed(2)}</p>
         </div>
         <div className="bg-red-50 p-4 rounded-2xl border border-red-100">
-          <p className="text-red-600 text-xs font-medium mb-1">Pago</p>
-          <p className="text-xl font-bold text-red-700">R$ {totalExpense.toFixed(2)}</p>
+          <p className="text-red-600 text-xs font-medium mb-1">Pago Hoje</p>
+          <p className="text-xl font-bold text-red-700">R$ {totalExpensePaid.toFixed(2)}</p>
         </div>
-        <div className="bg-blue-50 p-4 rounded-2xl border border-blue-100">
-          <p className="text-blue-600 text-xs font-medium mb-1">Saldo</p>
-          <p className={`text-xl font-bold ${balance >= 0 ? 'text-blue-700' : 'text-red-700'}`}>
-            R$ {balance.toFixed(2)}
-          </p>
+        <div className="bg-yellow-50 p-4 rounded-2xl border border-yellow-100">
+          <p className="text-yellow-600 text-xs font-medium mb-1">A Receber (Vence Hoje)</p>
+          <p className="text-xl font-bold text-yellow-700">R$ {totalIncomePending.toFixed(2)}</p>
+        </div>
+        <div className="bg-orange-50 p-4 rounded-2xl border border-orange-100">
+          <p className="text-orange-600 text-xs font-medium mb-1">A Pagar (Vence Hoje)</p>
+          <p className="text-xl font-bold text-orange-700">R$ {totalExpensePending.toFixed(2)}</p>
         </div>
       </div>
 
@@ -163,40 +168,73 @@ export default function CaixaPage() {
         ) : records.length === 0 ? (
           <div className="text-center py-10 text-gray-500">Nenhuma movimentação neste dia.</div>
         ) : (
-          records.map((record: any) => (
-            <div key={record.id} className="flex items-center p-4 bg-white rounded-xl border border-gray-100 shadow-sm">
-              <div className={`p-2 rounded-full mr-3 ${record.type === 'Income' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
-                {record.type === 'Income' ? <ArrowUpCircle size={18} /> : <ArrowDownCircle size={18} />}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-gray-800 text-sm truncate">{record.description}</p>
-                {record.customers && (
-                  <p className="text-xs text-blue-600 font-medium truncate">{record.customers.name}</p>
-                )}
-                <p className={`text-[10px] font-bold uppercase ${record.status === 'Paid' ? 'text-blue-500' : 'text-orange-500'}`}>
-                  {record.status === 'Paid' ? 'Pago' : 'Pendente'}
+          <>
+            {pendingRecords.length > 0 && (
+              <div>
+                <p className="text-xs font-bold text-orange-600 uppercase mb-2 flex items-center gap-1">
+                  <Clock size={14} /> Pendentes ({pendingRecords.length})
                 </p>
+                {pendingRecords.map((record: any) => (
+                  <div key={record.id} className="flex items-center p-4 bg-white rounded-xl border border-orange-100 shadow-sm mb-2">
+                    <div className={`p-2 rounded-full mr-3 ${record.type === 'Income' ? 'bg-yellow-100 text-yellow-600' : 'bg-orange-100 text-orange-600'}`}>
+                      {record.type === 'Income' ? <ArrowUpCircle size={18} /> : <ArrowDownCircle size={18} />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-gray-800 text-sm truncate">{record.description}</p>
+                      {record.customers && (
+                        <p className="text-xs text-blue-600 font-medium truncate">{record.customers.name}</p>
+                      )}
+                      <p className="text-[10px] text-gray-400">
+                        Vence: {new Date(record.due_date).toLocaleDateString('pt-BR')}
+                      </p>
+                    </div>
+                    <div className="text-right flex items-center gap-2">
+                      <p className={`font-bold text-sm ${record.type === 'Income' ? 'text-yellow-600' : 'text-orange-600'}`}>
+                        R$ {record.amount.toFixed(2)}
+                      </p>
+                      <button
+                        onClick={() => handleMarkAsPaid(record.id)}
+                        title="Receber / Pagar"
+                        className="text-green-500 hover:text-green-700 p-1.5 rounded-lg hover:bg-green-50 transition-colors"
+                      >
+                        <CheckCircle size={20} />
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
-              <div className="text-right flex items-center gap-2">
-                <p className={`font-bold text-sm ${record.type === 'Income' ? 'text-green-600' : 'text-red-600'}`}>
-                  R$ {record.amount.toFixed(2)}
+            )}
+
+            {paidRecords.length > 0 && (
+              <div>
+                <p className="text-xs font-bold text-green-600 uppercase mb-2 flex items-center gap-1">
+                  <CheckCircle size={14} /> Efetivados ({paidRecords.length})
                 </p>
-                {record.status === 'Pending' && (
-                  <button
-                    onClick={() => handleMarkAsPaid(record.id)}
-                    title="Marcar como pago"
-                    className="text-green-500 hover:text-green-700 p-1 rounded-lg hover:bg-green-50 transition-colors"
-                  >
-                    <CheckCircle size={18} />
-                  </button>
-                )}
+                {paidRecords.map((record: any) => (
+                  <div key={record.id} className="flex items-center p-4 bg-white rounded-xl border border-gray-100 shadow-sm mb-2">
+                    <div className={`p-2 rounded-full mr-3 ${record.type === 'Income' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
+                      {record.type === 'Income' ? <ArrowUpCircle size={18} /> : <ArrowDownCircle size={18} />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-gray-800 text-sm truncate">{record.description}</p>
+                      {record.customers && (
+                        <p className="text-xs text-blue-600 font-medium truncate">{record.customers.name}</p>
+                      )}
+                      <p className="text-[10px] text-blue-500 font-bold uppercase">Pago</p>
+                    </div>
+                    <div className="text-right flex items-center gap-2">
+                      <p className={`font-bold text-sm ${record.type === 'Income' ? 'text-green-600' : 'text-red-600'}`}>
+                        R$ {record.amount.toFixed(2)}
+                      </p>
+                    </div>
+                  </div>
+                ))}
               </div>
-            </div>
-          ))
+            )}
+          </>
         )}
       </div>
 
-      {/* Botão Fechar Caixa */}
       <button
         onClick={() => setShowCloseModal(true)}
         className="w-full py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-all shadow-lg flex items-center justify-center gap-2"
@@ -204,7 +242,6 @@ export default function CaixaPage() {
         <FileText size={18} /> Fechar Caixa do Dia
       </button>
 
-      {/* Modal de Fechamento */}
       {showCloseModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-2xl p-6 w-full max-w-md">
@@ -217,9 +254,14 @@ export default function CaixaPage() {
             <div className="space-y-3">
               <div className="bg-gray-50 rounded-xl p-4 space-y-2 text-sm">
                 <p className="flex justify-between"><span className="text-gray-600">Data:</span> <span className="font-bold">{new Date(selectedDate).toLocaleDateString('pt-BR')}</span></p>
-                <p className="flex justify-between"><span className="text-green-600">Total Recebido:</span> <span className="font-bold text-green-700">R$ {totalIncome.toFixed(2)}</span></p>
-                <p className="flex justify-between"><span className="text-red-600">Total Pago:</span> <span className="font-bold text-red-700">R$ {totalExpense.toFixed(2)}</span></p>
-                <p className="flex justify-between border-t pt-2"><span className="text-blue-600">Saldo:</span> <span className={`font-bold text-lg ${balance >= 0 ? 'text-blue-700' : 'text-red-700'}`}>R$ {balance.toFixed(2)}</span></p>
+                <p className="flex justify-between"><span className="text-green-600">Recebido:</span> <span className="font-bold text-green-700">R$ {totalIncomePaid.toFixed(2)}</span></p>
+                <p className="flex justify-between"><span className="text-red-600">Pago:</span> <span className="font-bold text-red-700">R$ {totalExpensePaid.toFixed(2)}</span></p>
+                <p className="flex justify-between border-t pt-2"><span className="text-blue-600">Saldo:</span> <span className={`font-bold text-lg ${(totalIncomePaid - totalExpensePaid) >= 0 ? 'text-blue-700' : 'text-red-700'}`}>R$ {(totalIncomePaid - totalExpensePaid).toFixed(2)}</span></p>
+                {pendingRecords.length > 0 && (
+                  <p className="text-xs text-orange-500 flex items-center gap-1 pt-1">
+                    <AlertCircle size={12} /> {pendingRecords.length} registro(s) pendente(s) não entram no fechamento.
+                  </p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Observação (opcional)</label>
