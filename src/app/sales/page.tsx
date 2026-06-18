@@ -367,7 +367,7 @@ export default function SalesPage() {
   function AccordionSection({ num, title, done, children, canOpen }: { num: number; title: string; done: boolean; children: React.ReactNode; canOpen: boolean }) {
     const isOpen = activeSection === num;
     return (
-      <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-visible">
         <button
           type="button"
           onClick={() => { if (canOpen || isOpen) setActiveSection(isOpen ? 0 : num); }}
