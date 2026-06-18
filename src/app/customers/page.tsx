@@ -258,18 +258,18 @@ export default function CustomersPage() {
                       </div>
 
                       {/* RESUMO FINANCEIRO - CARDS CLICÁVEIS */}
-                      <div className="grid grid-cols-3 gap-2">
-                        <button onClick={() => toggleFinSection('paid')} className={`text-left p-3 rounded-xl border transition-all ${expandedFinSection === 'paid' ? 'bg-green-100 border-green-300 shadow-sm' : 'bg-green-50 border-green-100 hover:bg-green-100'}`}>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        <button onClick={() => toggleFinSection('paid')} className={`text-left p-3 rounded-xl border transition-all overflow-hidden ${expandedFinSection === 'paid' ? 'bg-green-100 border-green-300 shadow-sm' : 'bg-green-50 border-green-100 hover:bg-green-100'}`}>
                           <p className="text-green-600 text-[10px] font-medium uppercase">Pago</p>
-                          <p className="text-lg font-bold text-green-700">{formatCurrency(totalPaid)}</p>
+                          <p className="text-lg font-bold text-green-700 truncate">{formatCurrency(totalPaid)}</p>
                         </button>
-                        <button onClick={() => toggleFinSection('pending')} className={`text-left p-3 rounded-xl border transition-all ${expandedFinSection === 'pending' ? 'bg-yellow-100 border-yellow-300 shadow-sm' : 'bg-yellow-50 border-yellow-100 hover:bg-yellow-100'}`}>
+                        <button onClick={() => toggleFinSection('pending')} className={`text-left p-3 rounded-xl border transition-all overflow-hidden ${expandedFinSection === 'pending' ? 'bg-yellow-100 border-yellow-300 shadow-sm' : 'bg-yellow-50 border-yellow-100 hover:bg-yellow-100'}`}>
                           <p className="text-yellow-600 text-[10px] font-medium uppercase">A Receber</p>
-                          <p className="text-lg font-bold text-yellow-700">{formatCurrency(totalPending)}</p>
+                          <p className="text-lg font-bold text-yellow-700 truncate">{formatCurrency(totalPending)}</p>
                         </button>
-                        <button onClick={() => { if (overdueRecords.length > 0) toggleFinSection('overdue'); }} className={`text-left p-3 rounded-xl border transition-all ${overdueRecords.length === 0 ? 'opacity-50 cursor-not-allowed' : ''} ${expandedFinSection === 'overdue' ? 'bg-red-100 border-red-300 shadow-sm' : 'bg-red-50 border-red-100 hover:bg-red-100'}`}>
+                        <button onClick={() => { if (overdueRecords.length > 0) toggleFinSection('overdue'); }} className={`text-left p-3 rounded-xl border transition-all overflow-hidden ${overdueRecords.length === 0 ? 'opacity-50 cursor-not-allowed' : ''} ${expandedFinSection === 'overdue' ? 'bg-red-100 border-red-300 shadow-sm' : 'bg-red-50 border-red-100 hover:bg-red-100'}`}>
                           <p className="text-red-600 text-[10px] font-medium uppercase">Em Atraso</p>
-                          <p className="text-lg font-bold text-red-700">{formatCurrency(totalOverdue)}</p>
+                          <p className="text-lg font-bold text-red-700 truncate">{formatCurrency(totalOverdue)}</p>
                           {overdueRecords.length > 0 && (
                             <p className="text-[10px] text-red-500 font-semibold">{overdueRecords.length} registro(s)</p>
                           )}
