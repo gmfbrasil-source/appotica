@@ -146,7 +146,13 @@ export default function CustomersPage() {
           placeholder="Buscar por nome, CPF ou telefone..."
           className="w-full pl-10 p-3 bg-gray-100 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-gray-950"
           value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
+          onChange={(e) => {
+            setSearchQuery(e.target.value);
+            if (selectedCustomer) {
+              setSelectedCustomer(null);
+              setExpandedFinSection(null);
+            }
+          }}
         />
       </div>
 
