@@ -5,6 +5,10 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
+function formatCurrency(value: number): string {
+  return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+}
+
 export default function Dashboard() {
   const [stats, setStats] = useState({
     customers: 0,
@@ -122,14 +126,14 @@ export default function Dashboard() {
             <DollarSign size={20} className="text-amber-600" />
           </div>
           <p className="text-gray-500 text-xs font-medium">A Receber</p>
-          <p className="text-2xl font-black text-gray-900 mt-0.5">R$ {stats.pendingIncome.toFixed(2)}</p>
+          <p className="text-2xl font-black text-gray-900 mt-0.5">{formatCurrency(stats.pendingIncome)}</p>
         </Link>
         <Link href="/caixa" className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
           <div className="bg-purple-50 p-2.5 rounded-xl w-fit mb-3">
             <TrendingUp size={20} className="text-purple-600" />
           </div>
           <p className="text-gray-500 text-xs font-medium">Vendas no Mês</p>
-          <p className="text-2xl font-black text-gray-900 mt-0.5">R$ {stats.monthIncome.toFixed(2)}</p>
+          <p className="text-2xl font-black text-gray-900 mt-0.5">{formatCurrency(stats.monthIncome)}</p>
         </Link>
       </div>
 
@@ -143,7 +147,7 @@ export default function Dashboard() {
                 <BarChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
                   <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 12 }} />
-                  <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 12 }} tickFormatter={(v) => `R$${v}`} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fill: '#9ca3af', fontSize: 12 }} tickFormatter={(v) => `R$ ${v}`} />
                   <Tooltip contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }} />
                   <Bar dataKey="revenue" fill="#2563eb" radius={[6, 6, 0, 0]} name="Receitas" />
                   <Bar dataKey="expenses" fill="#ef4444" radius={[6, 6, 0, 0]} name="Despesas" />
@@ -200,11 +204,11 @@ export default function Dashboard() {
             <div className="space-y-3">
               <Link href="/finance" className="flex items-center justify-between p-2 hover:bg-gray-50 rounded-xl transition-colors">
                 <span className="text-sm text-gray-600">A Receber</span>
-                <span className="text-sm font-bold text-amber-600">R$ {stats.pendingIncome.toFixed(2)}</span>
+                <span className="text-sm font-bold text-amber-600">{formatCurrency(stats.pendingIncome)}</span>
               </Link>
               <Link href="/finance" className="flex items-center justify-between p-2 hover:bg-gray-50 rounded-xl transition-colors">
                 <span className="text-sm text-gray-600">A Pagar</span>
-                <span className="text-sm font-bold text-red-600">R$ {stats.pendingExpense.toFixed(2)}</span>
+                <span className="text-sm font-bold text-red-600">{formatCurrency(stats.pendingExpense)}</span>
               </Link>
             </div>
           </div>
