@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useParams } from 'next/navigation';
+import { formatCurrency, companyInfo } from '@/lib/format';
 import { Printer, ArrowLeft, FileText, User, Calendar, Package, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -281,8 +282,11 @@ export default function OSDetailPage() {
             <p><strong>Lentes:</strong> {osData.notes?.split('\n')[1]?.replace('Lente: ', '') || '---'}</p>
             <p><strong>Obs:</strong> {osData.notes?.split('\n')[2]?.replace('Observações: ', '') || '---'}</p>
           </div>
-          <div className="text-center text-[10px] mt-10 border-t pt-2">
-            <p>Impresso via AppÓtica - Sistema de Gestão</p>
+          <div className="text-center text-[10px] mt-10 border-t pt-2 space-y-0.5">
+            <p className="font-bold">{companyInfo.nomeFantasia}</p>
+            <p>{companyInfo.razaoSocial} | CNPJ: {companyInfo.cnpj}</p>
+            <p>{companyInfo.enderecoCompleto}</p>
+            <p className="mt-2">Impresso via AppÓtica - Sistema de Gestão</p>
           </div>
         </div>
       </div>

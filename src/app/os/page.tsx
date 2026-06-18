@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import { formatCurrency } from '@/lib/format';
 import { Plus, Package, Truck, CheckCircle, Clock } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
@@ -176,7 +177,7 @@ export default function OSPage() {
                   <Clock size={12} className="mr-1" />
                   {order.scheduled_date ? new Date(order.scheduled_date).toLocaleDateString('pt-BR') : 'Sem data'}
                 </div>
-                <p className="font-bold text-blue-600">R$ {order.total_value?.toFixed(2)}</p>
+                <p className="font-bold text-blue-600">{formatCurrency(order.total_value || 0)}</p>
               </div>
             </div>
           ))}

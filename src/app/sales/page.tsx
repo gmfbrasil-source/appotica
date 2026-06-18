@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
+import { formatCurrency, companyInfo } from '@/lib/format';
 import { 
   ShoppingBag, 
   UserPlus, 
@@ -13,7 +14,8 @@ import {
   FileText, 
   Plus, 
   Loader2, 
-  ClipboardList
+  ClipboardList,
+  ChevronDown
 } from 'lucide-react';
 
 function getLocalDate(date?: Date): string {
@@ -26,6 +28,7 @@ export default function SalesPage() {
   const [customers, setCustomers] = useState<any[]>([]);
   const [customerSearch, setCustomerSearch] = useState('');
   const [showCustomerSuggestions, setShowCustomerSuggestions] = useState(false);
+  const [activeSection, setActiveSection] = useState(1);
   
   // Modos de cliente
   const [isNewCustomer, setIsNewCustomer] = useState(false);
@@ -69,6 +72,17 @@ export default function SalesPage() {
     installments: '1',
     status: 'Paid' // Paid, Pending
   });
+
+  // Seções do acordeão
+  const section1Done = isNewCustomer ? !!newCustomer.name : !!selectedCustomerId;
+  const section2Done = Object.values(prescription).some(v => v !== '');
+  const section3Done = !!saleDetails.total_value;
+
+  function getCustomerName(): string {
+    if (isNewCustomer) return newCustomer.name || 'Novo cliente';
+    const c = customers.find(c => c.id === selectedCustomerId);
+    return c?.name || 'Cliente';
+  }
 
   // Estado da venda realizada com sucesso (para modal de impressão)
   const [createdOS, setCreatedOS] = useState<any>(null);
@@ -350,26 +364,49 @@ export default function SalesPage() {
     }
   }
 
+  function AccordionSection({ num, title, done, children, canOpen }: { num: number; title: string; done: boolean; children: React.ReactNode; canOpen: boolean }) {
+    const isOpen = activeSection === num;
+    return (
+      <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
+        <button
+          type="button"
+          onClick={() => { if (canOpen || isOpen) setActiveSection(isOpen ? 0 : num); }}
+          className={`w-full flex items-center justify-between p-4 transition-colors ${canOpen || isOpen ? 'hover:bg-gray-50' : 'opacity-60 cursor-not-allowed'}`}
+        >
+          <div className="flex items-center gap-3">
+            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${done ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-500'}`}>
+              {done ? <Check size={14} /> : num}
+            </div>
+            <div className="text-left">
+              <p className="font-bold text-gray-800 text-sm">{num}. {title}</p>
+              {done && !isOpen && (
+                <p className="text-xs text-gray-500">
+                  {num === 1 && getCustomerName()}
+                  {num === 2 && (section2Done ? 'Grau informado' : 'Sem grau')}
+                  {num === 3 && `${formatCurrency(parseFloat(saleDetails.total_value || '0'))}`}
+                </p>
+              )}
+            </div>
+          </div>
+          <ChevronDown size={18} className={`text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        </button>
+        {isOpen && <div className="px-4 pb-4 border-t border-gray-100 pt-4">{children}</div>}
+      </div>
+    );
+  }
+
   return (
     <div className="p-4 md:p-8 max-w-4xl mx-auto pb-24">
-      <header className="mb-6 flex items-center gap-3">
-        <div className="bg-blue-600 p-3 rounded-2xl text-white shadow-md shadow-blue-100">
-          <ShoppingBag size={24} />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Nova Venda Completa</h1>
-          <p className="text-sm text-gray-500">Cadastre cliente, crie a O.S. e lance no financeiro em um clique.</p>
-        </div>
+      <header className="mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">Nova Venda</h1>
+        <p className="text-sm text-gray-500">Preencha cada etapa para criar a venda completa.</p>
       </header>
 
-      <form onSubmit={handleCreateSale} className="space-y-6">
+      <form onSubmit={handleCreateSale} className="space-y-3">
         
         {/* SEÇÃO 1: CLIENTE */}
-        <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm space-y-4">
-          <div className="flex justify-between items-center mb-2">
-            <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-              <UserCheck size={20} className="text-blue-600" /> 1. Cliente
-            </h2>
+        <AccordionSection num={1} title="Cliente" done={section1Done} canOpen={true}>
+          <div className="flex justify-between items-center mb-3">
             <button
               type="button"
               onClick={() => {
@@ -385,7 +422,6 @@ export default function SalesPage() {
           </div>
 
           {!isNewCustomer ? (
-            /* Buscar Cliente Existente */
             <div className="relative">
               <label className="block text-sm font-medium text-gray-700 mb-1">Buscar Cliente</label>
               <div className="relative">
@@ -407,7 +443,6 @@ export default function SalesPage() {
                 )}
               </div>
 
-              {/* Sugestões de Clientes */}
               {showCustomerSuggestions && filteredCustomers.length > 0 && (
                 <div className="absolute left-0 right-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-50 max-h-48 overflow-y-auto">
                   {filteredCustomers.map((c) => (
@@ -417,6 +452,7 @@ export default function SalesPage() {
                         setSelectedCustomerId(c.id);
                         setCustomerSearch(c.name);
                         setShowCustomerSuggestions(false);
+                        setActiveSection(2);
                       }}
                       className="p-3 hover:bg-blue-50 cursor-pointer border-b border-gray-50 last:border-0 text-sm flex justify-between items-center"
                     >
@@ -431,8 +467,7 @@ export default function SalesPage() {
               )}
             </div>
           ) : (
-            /* Formulário Novo Cliente */
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Nome Completo</label>
                 <input 
@@ -476,19 +511,20 @@ export default function SalesPage() {
               </div>
             </div>
           )}
-        </div>
+
+          {section1Done && (
+            <button type="button" onClick={() => setActiveSection(2)} className="w-full mt-3 py-2.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors text-sm">
+              Próximo
+            </button>
+          )}
+        </AccordionSection>
 
         {/* SEÇÃO 2: GRAU (PRESCRIÇÃO) */}
-        <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm space-y-4">
-          <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-            <FileText size={20} className="text-blue-600" /> 2. Receita / Grau do Cliente
-          </h2>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-gray-50 rounded-2xl border border-gray-100">
-            {/* Olho Direito */}
-            <div className="space-y-3">
-              <h3 className="font-bold text-sm text-gray-700 border-b pb-1 text-center sm:text-left">Olho Direito (OD)</h3>
-              <div className="grid grid-cols-3 gap-2">
+        <AccordionSection num={2} title="Receita / Grau" done={section2Done} canOpen={section1Done}>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-3 bg-gray-50 rounded-2xl border border-gray-100">
+            <div className="space-y-2">
+              <h3 className="font-bold text-xs text-gray-700 border-b pb-1 text-center sm:text-left">Olho Direito (OD)</h3>
+              <div className="grid grid-cols-3 gap-1.5">
                 <div>
                   <label className="block text-[10px] font-medium text-gray-500 uppercase">Esférico</label>
                   <input type="text" placeholder="-2.00" className="w-full p-2 bg-white border border-gray-200 rounded-lg text-sm text-center text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={prescription.od_sphere} onChange={e => setPrescription({...prescription, od_sphere: e.target.value})} />
@@ -503,11 +539,9 @@ export default function SalesPage() {
                 </div>
               </div>
             </div>
-
-            {/* Olho Esquerdo */}
-            <div className="space-y-3">
-              <h3 className="font-bold text-sm text-gray-700 border-b pb-1 text-center sm:text-left">Olho Esquerdo (OE)</h3>
-              <div className="grid grid-cols-3 gap-2">
+            <div className="space-y-2">
+              <h3 className="font-bold text-xs text-gray-700 border-b pb-1 text-center sm:text-left">Olho Esquerdo (OE)</h3>
+              <div className="grid grid-cols-3 gap-1.5">
                 <div>
                   <label className="block text-[10px] font-medium text-gray-500 uppercase">Esférico</label>
                   <input type="text" placeholder="-1.75" className="w-full p-2 bg-white border border-gray-200 rounded-lg text-sm text-center text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={prescription.oe_sphere} onChange={e => setPrescription({...prescription, oe_sphere: e.target.value})} />
@@ -523,107 +557,62 @@ export default function SalesPage() {
               </div>
             </div>
           </div>
-
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-3 mt-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Adição (Perto)</label>
-              <input 
-                type="text" 
-                placeholder="+2.00" 
-                className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none"
-                value={prescription.addition}
-                onChange={(e) => setPrescription({...prescription, addition: e.target.value})}
-              />
+              <label className="block text-sm font-medium text-gray-700 mb-1">Adição</label>
+              <input type="text" placeholder="+2.00" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={prescription.addition} onChange={(e) => setPrescription({...prescription, addition: e.target.value})} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">D.P. (Distância Pupilar)</label>
-              <input 
-                type="text" 
-                placeholder="62" 
-                className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none"
-                value={prescription.dp}
-                onChange={(e) => setPrescription({...prescription, dp: e.target.value})}
-              />
+              <label className="block text-sm font-medium text-gray-700 mb-1">D.P.</label>
+              <input type="text" placeholder="62" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={prescription.dp} onChange={(e) => setPrescription({...prescription, dp: e.target.value})} />
             </div>
           </div>
-        </div>
+          <div className="flex gap-2 mt-3">
+            <button type="button" onClick={() => setActiveSection(3)} className="flex-1 py-2.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors text-sm">
+              {section2Done ? 'Próximo' : 'Pular (Sem Grau)'}
+            </button>
+          </div>
+        </AccordionSection>
 
         {/* SEÇÃO 3: DETALHES DE ARMAÇÃO / LENTE / O.S. */}
-        <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm space-y-4">
-          <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-            <ClipboardList size={20} className="text-blue-600" /> 3. Detalhes de Laboratório / Armações
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <AccordionSection num={3} title="Armação / Laboratório" done={section3Done} canOpen={section1Done}>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Modelo de Armação</label>
-              <input 
-                type="text" 
-                placeholder="Ex: Ray-Ban Aviador Preto"
-                className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none"
-                value={saleDetails.frame}
-                onChange={(e) => setSaleDetails({...saleDetails, frame: e.target.value})}
-              />
+              <input type="text" placeholder="Ex: Ray-Ban Aviador Preto" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={saleDetails.frame} onChange={(e) => setSaleDetails({...saleDetails, frame: e.target.value})} />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Modelo / Grau da Lente</label>
-              <input 
-                type="text" 
-                placeholder="Ex: Varilux Crizal Sapphire"
-                className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none"
-                value={saleDetails.lenses}
-                onChange={(e) => setSaleDetails({...saleDetails, lenses: e.target.value})}
-              />
+              <input type="text" placeholder="Ex: Varilux Crizal Sapphire" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={saleDetails.lenses} onChange={(e) => setSaleDetails({...saleDetails, lenses: e.target.value})} />
             </div>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Valor Total da Venda</label>
-              <input 
-                type="number" 
-                step="0.01" 
-                required
-                placeholder="R$ 0.00"
-                className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 font-bold focus:ring-2 focus:ring-blue-500 outline-none"
-                value={saleDetails.total_value}
-                onChange={(e) => setSaleDetails({...saleDetails, total_value: e.target.value})}
-              />
+              <input type="number" step="0.01" required placeholder="R$ 0.00" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 font-bold focus:ring-2 focus:ring-blue-500 outline-none" value={saleDetails.total_value} onChange={(e) => setSaleDetails({...saleDetails, total_value: e.target.value})} />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Prazo de Entrega</label>
-              <input 
-                type="date" 
-                required
-                className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none"
-                value={saleDetails.scheduled_date}
-                onChange={(e) => setSaleDetails({...saleDetails, scheduled_date: e.target.value})}
-              />
+              <input type="date" required className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={saleDetails.scheduled_date} onChange={(e) => setSaleDetails({...saleDetails, scheduled_date: e.target.value})} />
             </div>
           </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Notas adicionais O.S.</label>
-            <textarea 
-              rows={2}
-              placeholder="Ex: Fazer tratamento antirreflexo..."
-              className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none"
-              value={saleDetails.notes}
-              onChange={(e) => setSaleDetails({...saleDetails, notes: e.target.value})}
-            />
+          <div className="mt-3">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Notas adicionais</label>
+            <textarea rows={2} placeholder="Ex: Fazer tratamento antirreflexo..." className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={saleDetails.notes} onChange={(e) => setSaleDetails({...saleDetails, notes: e.target.value})} />
           </div>
-        </div>
+          {section3Done && (
+            <button type="button" onClick={() => setActiveSection(4)} className="w-full mt-3 py-2.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors text-sm">
+              Próximo
+            </button>
+          )}
+        </AccordionSection>
 
         {/* SEÇÃO 4: FINANCEIRO / PAGAMENTO */}
-        <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm space-y-4">
-          <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-            <CreditCard size={20} className="text-blue-600" /> 4. Condição de Pagamento (Financeiro)
-          </h2>
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
+        <AccordionSection num={4} title="Pagamento" done={false} canOpen={section1Done && section3Done}>
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Forma de Pagamento</label>
-              <select 
-                className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none"
-                value={payment.method}
-                onChange={(e) => setPayment({...payment, method: e.target.value})}
-              >
+              <select className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={payment.method} onChange={(e) => setPayment({...payment, method: e.target.value})}>
                 <option value="Pix">Pix</option>
                 <option value="Cartao_Credito">Cartão de Crédito</option>
                 <option value="Cartao_Debito">Cartão de Débito</option>
@@ -633,23 +622,11 @@ export default function SalesPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Valor de Entrada</label>
-              <input 
-                type="number" 
-                step="0.01"
-                min="0"
-                className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none"
-                placeholder="R$ 0,00"
-                value={payment.downPayment}
-                onChange={(e) => setPayment({...payment, downPayment: e.target.value})}
-              />
+              <input type="number" step="0.01" min="0" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="R$ 0,00" value={payment.downPayment} onChange={(e) => setPayment({...payment, downPayment: e.target.value})} />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Parcelas Restantes</label>
-              <select 
-                className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none"
-                value={payment.installments}
-                onChange={(e) => setPayment({...payment, installments: e.target.value})}
-              >
+              <select className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={payment.installments} onChange={(e) => setPayment({...payment, installments: e.target.value})}>
                 <option value="0">0x (Só Entrada)</option>
                 {[...Array(12)].map((_, i) => (
                   <option key={i+1} value={i+1}>{i+1}x</option>
@@ -658,31 +635,25 @@ export default function SalesPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Status da Entrada</label>
-              <select 
-                className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none"
-                value={payment.status}
-                onChange={(e) => setPayment({...payment, status: e.target.value})}
-              >
+              <select className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={payment.status} onChange={(e) => setPayment({...payment, status: e.target.value})}>
                 <option value="Paid">Pago / Recebido</option>
                 <option value="Pending">A Receber (Aberto)</option>
               </select>
             </div>
           </div>
-        </div>
 
-        <button 
-          type="submit" 
-          disabled={loading}
-          className="w-full py-4 bg-blue-600 text-white font-extrabold rounded-2xl hover:bg-blue-700 transition-all shadow-lg shadow-blue-100 flex items-center justify-center gap-2 text-lg"
-        >
-          {loading ? (
-            <>
-              <Loader2 className="animate-spin" size={24} /> Salvando tudo...
-            </>
-          ) : (
-            'Finalizar Venda & Gerar O.S.'
-          )}
-        </button>
+          <button 
+            type="submit" 
+            disabled={loading}
+            className="w-full mt-4 py-3 bg-blue-600 text-white font-extrabold rounded-2xl hover:bg-blue-700 transition-all shadow-lg flex items-center justify-center gap-2"
+          >
+            {loading ? (
+              <><Loader2 className="animate-spin" size={20} /> Salvando tudo...</>
+            ) : (
+              'Finalizar Venda & Gerar O.S.'
+            )}
+          </button>
+        </AccordionSection>
 
       </form>
 
@@ -761,8 +732,10 @@ export default function SalesPage() {
                 {createdOS.notes && <p><strong>Obs:</strong> {createdOS.notes}</p>}
               </div>
 
-              <div className="text-center text-xs mt-6 border-t pt-4 text-gray-500">
-                <p>AppÓtica - Gestão na palma da mão.</p>
+              <div className="text-center text-xs mt-6 border-t pt-4 text-gray-500 space-y-0.5">
+                <p className="font-bold text-black">{companyInfo.nomeFantasia}</p>
+                <p>{companyInfo.razaoSocial} | CNPJ: {companyInfo.cnpj}</p>
+                <p className="mt-1">AppÓtica - Gestão na palma da mão.</p>
               </div>
             </div>
 

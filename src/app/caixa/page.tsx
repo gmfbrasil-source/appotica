@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import { formatCurrency } from '@/lib/format';
 import { Calendar, ArrowUpCircle, ArrowDownCircle, CheckCircle, DollarSign, FileText, Loader2, X, AlertCircle, Clock } from 'lucide-react';
 
 function getLocalDate(date?: Date): string {
@@ -138,19 +139,19 @@ export default function CaixaPage() {
       <div className="grid grid-cols-2 gap-3 mb-6">
         <div className="bg-green-50 p-4 rounded-2xl border border-green-100">
           <p className="text-green-600 text-xs font-medium mb-1">Recebido Hoje</p>
-          <p className="text-xl font-bold text-green-700">R$ {totalIncomePaid.toFixed(2)}</p>
+          <p className="text-xl font-bold text-green-700">{formatCurrency(totalIncomePaid)}</p>
         </div>
         <div className="bg-red-50 p-4 rounded-2xl border border-red-100">
           <p className="text-red-600 text-xs font-medium mb-1">Pago Hoje</p>
-          <p className="text-xl font-bold text-red-700">R$ {totalExpensePaid.toFixed(2)}</p>
+          <p className="text-xl font-bold text-red-700">{formatCurrency(totalExpensePaid)}</p>
         </div>
         <div className="bg-yellow-50 p-4 rounded-2xl border border-yellow-100">
           <p className="text-yellow-600 text-xs font-medium mb-1">A Receber (Vence Hoje)</p>
-          <p className="text-xl font-bold text-yellow-700">R$ {totalIncomePending.toFixed(2)}</p>
+          <p className="text-xl font-bold text-yellow-700">{formatCurrency(totalIncomePending)}</p>
         </div>
         <div className="bg-orange-50 p-4 rounded-2xl border border-orange-100">
           <p className="text-orange-600 text-xs font-medium mb-1">A Pagar (Vence Hoje)</p>
-          <p className="text-xl font-bold text-orange-700">R$ {totalExpensePending.toFixed(2)}</p>
+          <p className="text-xl font-bold text-orange-700">{formatCurrency(totalExpensePending)}</p>
         </div>
       </div>
 
@@ -190,7 +191,7 @@ export default function CaixaPage() {
                     </div>
                     <div className="text-right flex items-center gap-2">
                       <p className={`font-bold text-sm ${record.type === 'Income' ? 'text-yellow-600' : 'text-orange-600'}`}>
-                        R$ {record.amount.toFixed(2)}
+                        {formatCurrency(record.amount)}
                       </p>
                       <button
                         onClick={() => handleMarkAsPaid(record.id)}
@@ -224,7 +225,7 @@ export default function CaixaPage() {
                     </div>
                     <div className="text-right flex items-center gap-2">
                       <p className={`font-bold text-sm ${record.type === 'Income' ? 'text-green-600' : 'text-red-600'}`}>
-                        R$ {record.amount.toFixed(2)}
+                        {formatCurrency(record.amount)}
                       </p>
                     </div>
                   </div>
@@ -254,9 +255,9 @@ export default function CaixaPage() {
             <div className="space-y-3">
               <div className="bg-gray-50 rounded-xl p-4 space-y-2 text-sm">
                 <p className="flex justify-between"><span className="text-gray-600">Data:</span> <span className="font-bold">{new Date(selectedDate).toLocaleDateString('pt-BR')}</span></p>
-                <p className="flex justify-between"><span className="text-green-600">Recebido:</span> <span className="font-bold text-green-700">R$ {totalIncomePaid.toFixed(2)}</span></p>
-                <p className="flex justify-between"><span className="text-red-600">Pago:</span> <span className="font-bold text-red-700">R$ {totalExpensePaid.toFixed(2)}</span></p>
-                <p className="flex justify-between border-t pt-2"><span className="text-blue-600">Saldo:</span> <span className={`font-bold text-lg ${(totalIncomePaid - totalExpensePaid) >= 0 ? 'text-blue-700' : 'text-red-700'}`}>R$ {(totalIncomePaid - totalExpensePaid).toFixed(2)}</span></p>
+                <p className="flex justify-between"><span className="text-green-600">Recebido:</span> <span className="font-bold text-green-700">{formatCurrency(totalIncomePaid)}</span></p>
+                <p className="flex justify-between"><span className="text-red-600">Pago:</span> <span className="font-bold text-red-700">{formatCurrency(totalExpensePaid)}</span></p>
+                <p className="flex justify-between border-t pt-2"><span className="text-blue-600">Saldo:</span> <span className={`font-bold text-lg ${(totalIncomePaid - totalExpensePaid) >= 0 ? 'text-blue-700' : 'text-red-700'}`}>{formatCurrency(totalIncomePaid - totalExpensePaid)}</span></p>
                 {pendingRecords.length > 0 && (
                   <p className="text-xs text-orange-500 flex items-center gap-1 pt-1">
                     <AlertCircle size={12} /> {pendingRecords.length} registro(s) pendente(s) não entram no fechamento.

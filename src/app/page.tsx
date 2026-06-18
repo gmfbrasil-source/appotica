@@ -5,9 +5,7 @@ import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 
-function formatCurrency(value: number): string {
-  return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
-}
+import { formatCurrency } from '@/lib/format';
 
 export default function Dashboard() {
   const [stats, setStats] = useState({

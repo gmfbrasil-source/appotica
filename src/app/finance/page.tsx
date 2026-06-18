@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import { formatCurrency } from '@/lib/format';
 import { Plus, ArrowUpCircle, ArrowDownCircle, Calendar, Trash2, Search, Check, AlertCircle, CheckCircle } from 'lucide-react';
 
 function getLocalDate(date?: Date): string {
@@ -13,6 +14,9 @@ export default function FinancePage() {
   const [customers, setCustomers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filterType, setFilterType] = useState<'all' | 'Income' | 'Expense'>('all');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'Pending' | 'Paid'>('all');
   
   // Estados para o formulário
   const [formData, setFormData] = useState({
@@ -185,6 +189,15 @@ export default function FinancePage() {
     .filter((r: any) => r.type === 'Expense' && r.status === 'Pending')
     .reduce((acc: number, r: any) => acc + r.amount, 0);
 
+  const filteredRecords = records.filter((r: any) => {
+    const matchText = !searchQuery || 
+      r.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      r.customers?.name?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchType = filterType === 'all' || r.type === filterType;
+    const matchStatus = filterStatus === 'all' || r.status === filterStatus;
+    return matchText && matchType && matchStatus;
+  });
+
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
@@ -200,11 +213,11 @@ export default function FinancePage() {
       <div className="grid grid-cols-2 gap-4 mb-8">
         <div className="bg-green-50 p-4 rounded-2xl border border-green-100">
           <p className="text-green-600 text-xs font-medium mb-1">A Receber</p>
-          <p className="text-xl font-bold text-green-700">R$ {totalReceivable.toFixed(2)}</p>
+          <p className="text-xl font-bold text-green-700">{formatCurrency(totalReceivable)}</p>
         </div>
         <div className="bg-red-50 p-4 rounded-2xl border border-red-100">
           <p className="text-red-600 text-xs font-medium mb-1">A Pagar</p>
-          <p className="text-xl font-bold text-red-700">R$ {totalPayable.toFixed(2)}</p>
+          <p className="text-xl font-bold text-red-700">{formatCurrency(totalPayable)}</p>
         </div>
       </div>
 
@@ -365,11 +378,61 @@ export default function FinancePage() {
         </div>
       )}
 
+      {/* Barra de Busca */}
+      <div className="relative mb-4">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+        <input
+          type="text"
+          placeholder="Buscar por descrição ou fornecedor..."
+          className="w-full pl-10 p-2.5 bg-gray-100 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-gray-950 text-sm"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
+      </div>
+
+      {/* Filtros por tipo e status */}
+      <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
+        <div className="flex bg-gray-100 rounded-lg p-0.5">
+          {(['all', 'Income', 'Expense'] as const).map((t) => (
+            <button
+              key={t}
+              onClick={() => setFilterType(t)}
+              className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all whitespace-nowrap ${
+                filterType === t
+                  ? t === 'Income' ? 'bg-green-500 text-white'
+                    : t === 'Expense' ? 'bg-red-500 text-white'
+                    : 'bg-white text-gray-800 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              {t === 'all' ? 'Todos' : t === 'Income' ? 'Receitas' : 'Despesas'}
+            </button>
+          ))}
+        </div>
+        <div className="flex bg-gray-100 rounded-lg p-0.5">
+          {(['all', 'Pending', 'Paid'] as const).map((s) => (
+            <button
+              key={s}
+              onClick={() => setFilterStatus(s)}
+              className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all whitespace-nowrap ${
+                filterStatus === s
+                  ? s === 'Paid' ? 'bg-blue-500 text-white'
+                    : s === 'Pending' ? 'bg-orange-500 text-white'
+                    : 'bg-white text-gray-800 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              {s === 'all' ? 'Todos' : s === 'Paid' ? 'Pagos' : 'Pendentes'}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="space-y-3">
         {loading ? (
           <div className="text-center py-10 text-gray-500">Carregando financeiro...</div>
         ) : (
-          records.map((record: any) => (
+          filteredRecords.map((record: any) => (
             <div key={record.id} className="flex items-center p-4 bg-white rounded-xl border border-gray-100 shadow-sm relative group">
               <div className={`p-2 rounded-full mr-4 ${record.type === 'Income' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
                 {record.type === 'Income' ? <ArrowUpCircle size={20} /> : <ArrowDownCircle size={20} />}
@@ -394,7 +457,7 @@ export default function FinancePage() {
               <div className="text-right flex items-center gap-2">
                 <div>
                   <p className={`font-bold ${record.type === 'Income' ? 'text-green-600' : 'text-red-600'}`}>
-                    {record.type === 'Income' ? '+' : '-'} R$ {record.amount.toFixed(2)}
+                    {record.type === 'Income' ? '+' : '-'} {formatCurrency(record.amount)}
                   </p>
                   <p className={`text-[10px] font-bold uppercase ${record.status === 'Paid' ? 'text-blue-500' : 'text-orange-500'}`}>
                     {record.status === 'Paid' ? 'Pago' : 'Pendente'}
@@ -423,8 +486,12 @@ export default function FinancePage() {
             </div>
           ))
         )}
-        {!loading && records.length === 0 && (
-          <div className="text-center py-10 text-gray-500">Nenhum registro financeiro.</div>
+        {!loading && filteredRecords.length === 0 && (
+          <div className="text-center py-10 text-gray-500">
+            {searchQuery || filterType !== 'all' || filterStatus !== 'all'
+              ? 'Nenhum registro encontrado para estes filtros.'
+              : 'Nenhum registro financeiro.'}
+          </div>
         )}
       </div>
     </div>

@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import { formatCurrency } from '@/lib/format';
 import { Plus, Search, User, ChevronDown, MessageCircle, AlertCircle, Calendar, DollarSign, ShoppingBag, X, Phone, Mail, FileText, CreditCard, CheckCircle, Clock, ArrowRight, MapPin } from 'lucide-react';
 import Link from 'next/link';
 
@@ -111,12 +112,12 @@ export default function CustomersPage() {
       return;
     }
     const phoneClean = customer.phone.replace(/\D/g, '');
-    const items = overdueRecords.map(r => `- ${r.description}: R$ ${Number(r.amount).toFixed(2)}`).join('\n');
+    const items = overdueRecords.map(r => `- ${r.description}: ${formatCurrency(Number(r.amount))}`).join('\n');
     const msg = encodeURIComponent(
       `Olá ${customer.name}! Tudo bem?\n\n` +
       `Identificamos que há valor${overdueRecords.length > 1 ? 'es' : ''} pendente${overdueRecords.length > 1 ? 's' : ''} em nosso sistema:\n\n` +
       `${items}\n\n` +
-      `Valor total em atraso: R$ ${totalOverdue.toFixed(2)}\n\n` +
+      `Valor total em atraso: ${formatCurrency(totalOverdue)}\n\n` +
       `Pedimos gentilmente que entre em contato conosco para regularizar. Estamos à disposição!`
     );
     window.open(`https://wa.me/55${phoneClean}?text=${msg}`, '_blank');
@@ -254,15 +255,15 @@ export default function CustomersPage() {
                       <div className="grid grid-cols-3 gap-2">
                         <button onClick={() => toggleFinSection('paid')} className={`text-left p-3 rounded-xl border transition-all ${expandedFinSection === 'paid' ? 'bg-green-100 border-green-300 shadow-sm' : 'bg-green-50 border-green-100 hover:bg-green-100'}`}>
                           <p className="text-green-600 text-[10px] font-medium uppercase">Pago</p>
-                          <p className="text-lg font-bold text-green-700">R$ {totalPaid.toFixed(2)}</p>
+                          <p className="text-lg font-bold text-green-700">{formatCurrency(totalPaid)}</p>
                         </button>
                         <button onClick={() => toggleFinSection('pending')} className={`text-left p-3 rounded-xl border transition-all ${expandedFinSection === 'pending' ? 'bg-yellow-100 border-yellow-300 shadow-sm' : 'bg-yellow-50 border-yellow-100 hover:bg-yellow-100'}`}>
                           <p className="text-yellow-600 text-[10px] font-medium uppercase">A Receber</p>
-                          <p className="text-lg font-bold text-yellow-700">R$ {totalPending.toFixed(2)}</p>
+                          <p className="text-lg font-bold text-yellow-700">{formatCurrency(totalPending)}</p>
                         </button>
                         <button onClick={() => { if (overdueRecords.length > 0) toggleFinSection('overdue'); }} className={`text-left p-3 rounded-xl border transition-all ${overdueRecords.length === 0 ? 'opacity-50 cursor-not-allowed' : ''} ${expandedFinSection === 'overdue' ? 'bg-red-100 border-red-300 shadow-sm' : 'bg-red-50 border-red-100 hover:bg-red-100'}`}>
                           <p className="text-red-600 text-[10px] font-medium uppercase">Em Atraso</p>
-                          <p className="text-lg font-bold text-red-700">R$ {totalOverdue.toFixed(2)}</p>
+                          <p className="text-lg font-bold text-red-700">{formatCurrency(totalOverdue)}</p>
                           {overdueRecords.length > 0 && (
                             <p className="text-[10px] text-red-500 font-semibold">{overdueRecords.length} registro(s)</p>
                           )}
@@ -283,7 +284,7 @@ export default function CustomersPage() {
                                   <Calendar size={10} /> {new Date(rec.due_date).toLocaleDateString('pt-BR')}
                                 </p>
                               </div>
-                              <p className="font-bold text-green-600">R$ {Number(rec.amount).toFixed(2)}</p>
+                              <p className="font-bold text-green-600">{formatCurrency(Number(rec.amount))}</p>
                             </div>
                           ))}
                         </div>
@@ -303,7 +304,7 @@ export default function CustomersPage() {
                                   <Calendar size={10} /> Vence: {new Date(rec.due_date).toLocaleDateString('pt-BR')}
                                 </p>
                               </div>
-                              <p className="font-bold text-yellow-600">R$ {Number(rec.amount).toFixed(2)}</p>
+                              <p className="font-bold text-yellow-600">{formatCurrency(Number(rec.amount))}</p>
                             </div>
                           ))}
                         </div>
@@ -323,7 +324,7 @@ export default function CustomersPage() {
                                   <Calendar size={10} /> Venceu: {new Date(rec.due_date).toLocaleDateString('pt-BR')}
                                 </p>
                               </div>
-                              <p className="font-bold text-red-600">R$ {Number(rec.amount).toFixed(2)}</p>
+                              <p className="font-bold text-red-600">{formatCurrency(Number(rec.amount))}</p>
                             </div>
                           ))}
                         </div>
@@ -343,7 +344,7 @@ export default function CustomersPage() {
                                   <p className="text-xs text-gray-500">{new Date(os.created_at).toLocaleDateString('pt-BR')}</p>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                  <p className="text-sm font-bold text-blue-600">R$ {Number(os.total_value).toFixed(2)}</p>
+                                  <p className="text-sm font-bold text-blue-600">{formatCurrency(Number(os.total_value))}</p>
                                   <ArrowRight size={14} className="text-gray-400" />
                                 </div>
                               </Link>

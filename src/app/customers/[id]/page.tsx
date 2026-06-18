@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
+import { formatCurrency } from '@/lib/format';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Phone, MessageCircle, Calendar, DollarSign, AlertCircle, ShoppingBag } from 'lucide-react';
 import Link from 'next/link';
@@ -88,7 +89,7 @@ export default function CustomerDetailsPage() {
     }
 
     const phone = String(customer.phone).replace(/\D/g, '');
-    const message = `Olá ${customer.name}, tudo bem? Aqui é da Ótica. Notamos que você possui parcelas em aberto no valor de R$ ${totalPending.toFixed(2)}. Podemos te ajudar a regularizar?`;
+    const message = `Olá ${customer.name}, tudo bem? Aqui é da Ótica. Notamos que você possui parcelas em aberto no valor de ${formatCurrency(totalPending)}. Podemos te ajudar a regularizar?`;
     const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
     window.open(url, '_blank');
   }
@@ -183,17 +184,17 @@ export default function CustomerDetailsPage() {
             <div className="grid grid-cols-1 gap-3">
               <div className="p-3 bg-green-50 rounded-2xl border border-green-100 flex justify-between items-center">
                 <span className="text-green-700 text-sm font-medium">Total Pago</span>
-                <span className="text-green-700 font-bold">R$ {totalPaid.toFixed(2)}</span>
+                <span className="text-green-700 font-bold">{formatCurrency(totalPaid)}</span>
               </div>
               <div className="p-3 bg-amber-50 rounded-2xl border border-amber-100 flex justify-between items-center">
                 <span className="text-amber-700 text-sm font-medium">A Receber</span>
-                <span className="text-amber-700 font-bold">R$ {totalPending.toFixed(2)}</span>
+                <span className="text-amber-700 font-bold">{formatCurrency(totalPending)}</span>
               </div>
               {overdueRecords.length > 0 && (
                 <div className="p-3 bg-red-50 rounded-2xl border border-red-100 flex justify-between items-center">
                   <span className="text-red-700 text-sm font-medium">Em Atraso</span>
                   <span className="text-red-700 font-bold">
-                    R$ {overdueRecords.reduce((acc, curr) => acc + curr.amount, 0).toFixed(2)}
+                    {formatCurrency(overdueRecords.reduce((acc, curr) => acc + curr.amount, 0))}
                   </span>
                 </div>
               )}
@@ -225,7 +226,7 @@ export default function CustomerDetailsPage() {
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="font-bold text-gray-900">R$ {order.total_value?.toFixed(2)}</p>
+                    <p className="font-bold text-gray-900">{formatCurrency(order.total_value || 0)}</p>
                     <p className={`text-[10px] font-bold uppercase ${
                       order.status === 'Delivered' ? 'text-green-500' : 'text-blue-500'
                     }`}>
@@ -259,7 +260,7 @@ export default function CustomerDetailsPage() {
                     <tr key={fin.id} className="hover:bg-gray-50 transition-colors">
                       <td className="py-3 px-2 font-medium text-gray-800">{fin.description}</td>
                       <td className="py-3 px-2 text-gray-500">{fin?.due_date ? new Date(fin.due_date).toLocaleDateString('pt-BR') : '---'}</td>
-                      <td className="py-3 px-2 font-bold">R$ {(fin?.amount || 0).toFixed(2)}</td>
+                      <td className="py-3 px-2 font-bold">{formatCurrency(fin?.amount || 0)}</td>
                       <td className="py-3 px-2">
                         <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase ${
                           fin.status === 'Paid' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'
