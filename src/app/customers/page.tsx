@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { Plus, Search, User, ArrowRight, MessageCircle, AlertCircle, Calendar, DollarSign, ShoppingBag, X } from 'lucide-react';
+import { Plus, Search, User, ChevronDown, MessageCircle, AlertCircle, Calendar, DollarSign, ShoppingBag, X, Phone, Mail, FileText, CreditCard, CheckCircle, Clock, ArrowRight, MapPin } from 'lucide-react';
 import Link from 'next/link';
 
 export default function CustomersPage() {
@@ -9,12 +9,13 @@ export default function CustomersPage() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [formData, setFormData] = useState({ name: '', phone: '', email: '', cpf: '', cnpj: '' });
+  const [formData, setFormData] = useState({ name: '', phone: '', email: '', cpf: '', cnpj: '', address: '' });
 
   const [selectedCustomer, setSelectedCustomer] = useState<any>(null);
   const [customerLoading, setCustomerLoading] = useState(false);
   const [customerOrders, setCustomerOrders] = useState<any[]>([]);
   const [customerFinancials, setCustomerFinancials] = useState<any[]>([]);
+  const [expandedFinSection, setExpandedFinSection] = useState<string | null>(null);
 
   useEffect(() => {
     fetchCustomers();
@@ -40,7 +41,7 @@ export default function CustomersPage() {
     const { error } = await supabase.from('customers').insert([{ ...formData, shop_id: profile.shop_id }]);
     if (!error) {
       setShowForm(false);
-      setFormData({ name: '', phone: '', email: '', cpf: '', cnpj: '' });
+      setFormData({ name: '', phone: '', email: '', cpf: '', cnpj: '', address: '' });
       fetchCustomers();
     } else {
       alert('Erro ao salvar: ' + error.message);
@@ -50,9 +51,11 @@ export default function CustomersPage() {
   async function handleCustomerClick(customer: any) {
     if (selectedCustomer?.id === customer.id) {
       setSelectedCustomer(null);
+      setExpandedFinSection(null);
       return;
     }
     setSelectedCustomer(customer);
+    setExpandedFinSection(null);
     setCustomerLoading(true);
     try {
       const { data: ordersData } = await supabase
@@ -80,6 +83,9 @@ export default function CustomersPage() {
     if (!f?.due_date) return false;
     return f.status === 'Pending' && new Date(f.due_date) < new Date(new Date().toDateString());
   });
+  const totalOverdue = overdueRecords.reduce((acc, curr) => acc + (Number(curr?.amount) || 0), 0);
+  const paidRecords = (customerFinancials || []).filter(f => f?.status === 'Paid');
+  const pendingRecords = (customerFinancials || []).filter(f => f?.status === 'Pending' && !overdueRecords.some(o => o.id === f.id));
 
   const filteredCustomers = searchQuery
     ? customers.filter(c =>
@@ -89,12 +95,43 @@ export default function CustomersPage() {
       )
     : customers;
 
+  function handleWhatsApp(customer: any) {
+    if (!customer.phone) {
+      alert('Cliente não possui telefone cadastrado.');
+      return;
+    }
+    const phoneClean = customer.phone.replace(/\D/g, '');
+    const msg = encodeURIComponent(`Olá ${customer.name}! Tudo bem? Aqui é da Ótica, passando para saber como você está.`);
+    window.open(`https://wa.me/55${phoneClean}?text=${msg}`, '_blank');
+  }
+
+  function handleCharge(customer: any) {
+    if (!customer.phone) {
+      alert('Cliente não possui telefone cadastrado.');
+      return;
+    }
+    const phoneClean = customer.phone.replace(/\D/g, '');
+    const items = overdueRecords.map(r => `- ${r.description}: R$ ${Number(r.amount).toFixed(2)}`).join('\n');
+    const msg = encodeURIComponent(
+      `Olá ${customer.name}! Tudo bem?\n\n` +
+      `Identificamos que há valor${overdueRecords.length > 1 ? 'es' : ''} pendente${overdueRecords.length > 1 ? 's' : ''} em nosso sistema:\n\n` +
+      `${items}\n\n` +
+      `Valor total em atraso: R$ ${totalOverdue.toFixed(2)}\n\n` +
+      `Pedimos gentilmente que entre em contato conosco para regularizar. Estamos à disposição!`
+    );
+    window.open(`https://wa.me/55${phoneClean}?text=${msg}`, '_blank');
+  }
+
+  function toggleFinSection(section: string) {
+    setExpandedFinSection(expandedFinSection === section ? null : section);
+  }
+
   return (
     <div className="p-4 md:p-6 max-w-4xl mx-auto pb-24">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold text-gray-800">Clientes</h1>
         <button
-          onClick={() => { setFormData({ name: '', phone: '', email: '', cpf: '', cnpj: '' }); setShowForm(true); }}
+          onClick={() => { setFormData({ name: '', phone: '', email: '', cpf: '', cnpj: '', address: '' }); setShowForm(true); }}
           className="bg-blue-600 text-white p-2 rounded-full shadow-lg hover:bg-blue-700 transition-colors"
         >
           <Plus size={24} />
@@ -114,7 +151,7 @@ export default function CustomersPage() {
 
       {showForm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-md">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-bold">Novo Cliente</h2>
               <button onClick={() => setShowForm(false)} className="text-gray-500 hover:text-gray-700">
@@ -138,6 +175,14 @@ export default function CustomersPage() {
                 <label className="block text-sm font-medium text-gray-700 mb-1">CPF</label>
                 <input type="text" className="w-full p-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-gray-950" value={formData.cpf} onChange={(e) => setFormData({...formData, cpf: e.target.value})} />
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">CNPJ</label>
+                <input type="text" className="w-full p-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-gray-950" value={formData.cnpj} onChange={(e) => setFormData({...formData, cnpj: e.target.value})} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Endereço</label>
+                <input type="text" className="w-full p-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-gray-950" value={formData.address} onChange={(e) => setFormData({...formData, address: e.target.value})} />
+              </div>
               <button type="submit" className="w-full p-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors">
                 Salvar Cliente
               </button>
@@ -159,11 +204,15 @@ export default function CustomersPage() {
                 <div className="bg-blue-100 p-2 rounded-full mr-4">
                   <User size={20} className="text-blue-600" />
                 </div>
-                <div className="flex-1">
-                  <p className="font-semibold text-gray-800">{customer.name}</p>
-                  <p className="text-xs text-gray-500">{customer.phone || 'Sem telefone'} {customer.cpf && `| CPF: ${customer.cpf}`}</p>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-gray-800 truncate">{customer.name}</p>
+                  <p className="text-xs text-gray-500 truncate">
+                    {customer.phone || 'Sem telefone'}
+                    {customer.cpf ? ` | CPF: ${customer.cpf}` : ''}
+                    {customer.cnpj ? ` | CNPJ: ${customer.cnpj}` : ''}
+                  </p>
                 </div>
-                <ArrowRight size={18} className={`text-gray-400 transition-transform ${selectedCustomer?.id === customer.id ? 'rotate-90' : ''}`} />
+                <ChevronDown size={18} className={`text-gray-400 transition-transform flex-shrink-0 ${selectedCustomer?.id === customer.id ? 'rotate-180' : ''}`} />
               </div>
 
               {selectedCustomer?.id === customer.id && (
@@ -172,73 +221,132 @@ export default function CustomersPage() {
                     <div className="text-center py-6 text-gray-500">Carregando detalhes...</div>
                   ) : (
                     <>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="bg-green-50 p-3 rounded-xl border border-green-100">
-                          <p className="text-green-600 text-xs font-medium">Total Pago</p>
-                          <p className="text-lg font-bold text-green-700">R$ {totalPaid.toFixed(2)}</p>
-                        </div>
-                        <div className="bg-red-50 p-3 rounded-xl border border-red-100">
-                          <p className="text-red-600 text-xs font-medium">Total Pendente</p>
-                          <p className="text-lg font-bold text-red-700">R$ {totalPending.toFixed(2)}</p>
+                      {/* DADOS DO CADASTRO */}
+                      <div className="bg-white rounded-xl p-4 border border-gray-100 space-y-2">
+                        <p className="font-bold text-gray-800 text-sm flex items-center gap-1.5">
+                          <User size={16} className="text-blue-600" /> Dados do Cliente
+                        </p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                          <div className="flex items-center gap-2 text-gray-600">
+                            <FileText size={14} className="text-gray-400" />
+                            <span><strong>CPF:</strong> {customer.cpf || '---'}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-gray-600">
+                            <FileText size={14} className="text-gray-400" />
+                            <span><strong>CNPJ:</strong> {customer.cnpj || '---'}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-gray-600">
+                            <Phone size={14} className="text-gray-400" />
+                            <span><strong>Tel:</strong> {customer.phone || '---'}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-gray-600">
+                            <Mail size={14} className="text-gray-400" />
+                            <span><strong>Email:</strong> {customer.email || '---'}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-gray-600 sm:col-span-2">
+                            <MapPin size={14} className="text-gray-400" />
+                            <span><strong>Endereço:</strong> {customer.address || '---'}</span>
+                          </div>
                         </div>
                       </div>
 
-                      {overdueRecords.length > 0 && (
-                        <div className="bg-red-50 border border-red-200 rounded-xl p-3">
-                          <p className="text-red-600 text-xs font-bold flex items-center gap-1 mb-2">
-                            <AlertCircle size={14} /> {overdueRecords.length} registro(s) em atraso
+                      {/* RESUMO FINANCEIRO - CARDS CLICÁVEIS */}
+                      <div className="grid grid-cols-3 gap-2">
+                        <button onClick={() => toggleFinSection('paid')} className={`text-left p-3 rounded-xl border transition-all ${expandedFinSection === 'paid' ? 'bg-green-100 border-green-300 shadow-sm' : 'bg-green-50 border-green-100 hover:bg-green-100'}`}>
+                          <p className="text-green-600 text-[10px] font-medium uppercase">Pago</p>
+                          <p className="text-lg font-bold text-green-700">R$ {totalPaid.toFixed(2)}</p>
+                        </button>
+                        <button onClick={() => toggleFinSection('pending')} className={`text-left p-3 rounded-xl border transition-all ${expandedFinSection === 'pending' ? 'bg-yellow-100 border-yellow-300 shadow-sm' : 'bg-yellow-50 border-yellow-100 hover:bg-yellow-100'}`}>
+                          <p className="text-yellow-600 text-[10px] font-medium uppercase">A Receber</p>
+                          <p className="text-lg font-bold text-yellow-700">R$ {totalPending.toFixed(2)}</p>
+                        </button>
+                        <button onClick={() => { if (overdueRecords.length > 0) toggleFinSection('overdue'); }} className={`text-left p-3 rounded-xl border transition-all ${overdueRecords.length === 0 ? 'opacity-50 cursor-not-allowed' : ''} ${expandedFinSection === 'overdue' ? 'bg-red-100 border-red-300 shadow-sm' : 'bg-red-50 border-red-100 hover:bg-red-100'}`}>
+                          <p className="text-red-600 text-[10px] font-medium uppercase">Em Atraso</p>
+                          <p className="text-lg font-bold text-red-700">R$ {totalOverdue.toFixed(2)}</p>
+                          {overdueRecords.length > 0 && (
+                            <p className="text-[10px] text-red-500 font-semibold">{overdueRecords.length} registro(s)</p>
+                          )}
+                        </button>
+                      </div>
+
+                      {/* LISTA EXPANSÍVEL - PAGOS */}
+                      {expandedFinSection === 'paid' && paidRecords.length > 0 && (
+                        <div className="bg-white rounded-xl border border-green-100 p-3 space-y-2">
+                          <p className="text-xs font-bold text-green-600 uppercase flex items-center gap-1">
+                            <CheckCircle size={14} /> Registros Pagos
                           </p>
-                          {overdueRecords.map((rec: any) => (
-                            <div key={rec.id} className="flex justify-between text-sm text-red-700">
-                              <span className="truncate">{rec.description}</span>
-                              <span className="font-bold">R$ {Number(rec.amount).toFixed(2)}</span>
+                          {paidRecords.map((rec: any) => (
+                            <div key={rec.id} className="flex items-center justify-between text-sm py-1.5 border-b border-gray-50 last:border-0">
+                              <div>
+                                <p className="text-gray-800 font-medium">{rec.description}</p>
+                                <p className="text-[11px] text-gray-400 flex items-center gap-1">
+                                  <Calendar size={10} /> {new Date(rec.due_date).toLocaleDateString('pt-BR')}
+                                </p>
+                              </div>
+                              <p className="font-bold text-green-600">R$ {Number(rec.amount).toFixed(2)}</p>
                             </div>
                           ))}
                         </div>
                       )}
 
+                      {/* LISTA EXPANSÍVEL - A RECEBER */}
+                      {expandedFinSection === 'pending' && pendingRecords.length > 0 && (
+                        <div className="bg-white rounded-xl border border-yellow-100 p-3 space-y-2">
+                          <p className="text-xs font-bold text-yellow-600 uppercase flex items-center gap-1">
+                            <Clock size={14} /> A Receber (em dia)
+                          </p>
+                          {pendingRecords.map((rec: any) => (
+                            <div key={rec.id} className="flex items-center justify-between text-sm py-1.5 border-b border-gray-50 last:border-0">
+                              <div>
+                                <p className="text-gray-800 font-medium">{rec.description}</p>
+                                <p className="text-[11px] text-gray-400 flex items-center gap-1">
+                                  <Calendar size={10} /> Vence: {new Date(rec.due_date).toLocaleDateString('pt-BR')}
+                                </p>
+                              </div>
+                              <p className="font-bold text-yellow-600">R$ {Number(rec.amount).toFixed(2)}</p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* LISTA EXPANSÍVEL - EM ATRASO */}
+                      {expandedFinSection === 'overdue' && overdueRecords.length > 0 && (
+                        <div className="bg-white rounded-xl border border-red-100 p-3 space-y-2">
+                          <p className="text-xs font-bold text-red-600 uppercase flex items-center gap-1">
+                            <AlertCircle size={14} /> Em Atraso
+                          </p>
+                          {overdueRecords.map((rec: any) => (
+                            <div key={rec.id} className="flex items-center justify-between text-sm py-1.5 border-b border-gray-50 last:border-0">
+                              <div>
+                                <p className="text-gray-800 font-medium">{rec.description}</p>
+                                <p className="text-[11px] text-red-400 flex items-center gap-1">
+                                  <Calendar size={10} /> Venceu: {new Date(rec.due_date).toLocaleDateString('pt-BR')}
+                                </p>
+                              </div>
+                              <p className="font-bold text-red-600">R$ {Number(rec.amount).toFixed(2)}</p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* HISTÓRICO DE COMPRAS */}
                       {customerOrders.length > 0 && (
-                        <div>
-                          <p className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-1">
-                            <ShoppingBag size={14} /> Ordens de Serviço
+                        <div className="bg-white rounded-xl p-4 border border-gray-100 space-y-2">
+                          <p className="font-bold text-gray-800 text-sm flex items-center gap-1.5">
+                            <ShoppingBag size={16} className="text-blue-600" /> Compras Realizadas
                           </p>
                           <div className="space-y-2">
                             {customerOrders.map((os: any) => (
-                              <Link key={os.id} href={`/os/${os.id}`} className="flex items-center justify-between p-3 bg-white rounded-xl border border-gray-100 hover:shadow-sm transition-shadow">
+                              <Link key={os.id} href={`/os/${os.id}`} className="flex items-center justify-between p-2.5 bg-gray-50 rounded-xl border border-gray-100 hover:bg-gray-100 transition-colors">
                                 <div>
                                   <p className="text-sm font-semibold text-gray-800">O.S. #{os.id.slice(0, 8)}</p>
                                   <p className="text-xs text-gray-500">{new Date(os.created_at).toLocaleDateString('pt-BR')}</p>
                                 </div>
-                                <p className="text-sm font-bold text-blue-600">R$ {Number(os.total_value).toFixed(2)}</p>
+                                <div className="flex items-center gap-2">
+                                  <p className="text-sm font-bold text-blue-600">R$ {Number(os.total_value).toFixed(2)}</p>
+                                  <ArrowRight size={14} className="text-gray-400" />
+                                </div>
                               </Link>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {customerFinancials.length > 0 && (
-                        <div>
-                          <p className="text-sm font-bold text-gray-700 mb-2 flex items-center gap-1">
-                            <DollarSign size={14} /> Financeiro
-                          </p>
-                          <div className="space-y-2">
-                            {customerFinancials.map((rec: any) => (
-                              <div key={rec.id} className="flex items-center justify-between p-3 bg-white rounded-xl border border-gray-100">
-                                <div>
-                                  <p className="text-sm font-semibold text-gray-800">{rec.description}</p>
-                                  <p className="text-xs text-gray-500 flex items-center gap-1">
-                                    <Calendar size={10} /> {new Date(rec.due_date).toLocaleDateString('pt-BR')}
-                                  </p>
-                                </div>
-                                <div className="text-right">
-                                  <p className={`text-sm font-bold ${rec.type === 'Income' ? 'text-green-600' : 'text-red-600'}`}>
-                                    R$ {Number(rec.amount).toFixed(2)}
-                                  </p>
-                                  <p className={`text-[10px] font-bold uppercase ${rec.status === 'Paid' ? 'text-blue-500' : 'text-orange-500'}`}>
-                                    {rec.status === 'Paid' ? 'Pago' : 'Pendente'}
-                                  </p>
-                                </div>
-                              </div>
                             ))}
                           </div>
                         </div>
@@ -247,6 +355,24 @@ export default function CustomersPage() {
                       {customerOrders.length === 0 && customerFinancials.length === 0 && (
                         <p className="text-center text-gray-400 text-sm py-4">Nenhum registro encontrado para este cliente.</p>
                       )}
+
+                      {/* BOTÕES DE AÇÃO */}
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleWhatsApp(customer)}
+                          className="flex-1 py-2.5 bg-green-600 hover:bg-green-700 text-white font-bold text-sm rounded-xl transition-colors flex items-center justify-center gap-1.5"
+                        >
+                          <MessageCircle size={16} /> WhatsApp
+                        </button>
+                        {overdueRecords.length > 0 && (
+                          <button
+                            onClick={() => handleCharge(customer)}
+                            className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold text-sm rounded-xl transition-colors flex items-center justify-center gap-1.5"
+                          >
+                            <AlertCircle size={16} /> Cobrar ({overdueRecords.length})
+                          </button>
+                        )}
+                      </div>
                     </>
                   )}
                 </div>
