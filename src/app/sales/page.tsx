@@ -23,6 +23,41 @@ function getLocalDate(date?: Date): string {
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 }
 
+function AccordionSection({ num, title, done, isOpen, canOpen, onToggle, children, summary }: {
+  num: number;
+  title: string;
+  done: boolean;
+  isOpen: boolean;
+  canOpen: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+  summary?: string;
+}) {
+  return (
+    <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-visible">
+      <button
+        type="button"
+        onClick={() => { if (canOpen || isOpen) onToggle(); }}
+        className={`w-full flex items-center justify-between p-4 transition-colors ${canOpen || isOpen ? 'hover:bg-gray-50' : 'opacity-60 cursor-not-allowed'}`}
+      >
+        <div className="flex items-center gap-3">
+          <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${done ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-500'}`}>
+            {done ? <Check size={14} /> : num}
+          </div>
+          <div className="text-left">
+            <p className="font-bold text-gray-800 text-sm">{num}. {title}</p>
+            {done && !isOpen && summary && (
+              <p className="text-xs text-gray-500">{summary}</p>
+            )}
+          </div>
+        </div>
+        <ChevronDown size={18} className={`text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+      </button>
+      {isOpen && <div className="px-4 pb-4 border-t border-gray-100 pt-4">{children}</div>}
+    </div>
+  );
+}
+
 export default function SalesPage() {
   const [loading, setLoading] = useState(false);
   const [customers, setCustomers] = useState<any[]>([]);
@@ -364,37 +399,6 @@ export default function SalesPage() {
     }
   }
 
-  function AccordionSection({ num, title, done, children, canOpen }: { num: number; title: string; done: boolean; children: React.ReactNode; canOpen: boolean }) {
-    const isOpen = activeSection === num;
-    return (
-      <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-visible">
-        <button
-          type="button"
-          onClick={() => { if (canOpen || isOpen) setActiveSection(isOpen ? 0 : num); }}
-          className={`w-full flex items-center justify-between p-4 transition-colors ${canOpen || isOpen ? 'hover:bg-gray-50' : 'opacity-60 cursor-not-allowed'}`}
-        >
-          <div className="flex items-center gap-3">
-            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${done ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-500'}`}>
-              {done ? <Check size={14} /> : num}
-            </div>
-            <div className="text-left">
-              <p className="font-bold text-gray-800 text-sm">{num}. {title}</p>
-              {done && !isOpen && (
-                <p className="text-xs text-gray-500">
-                  {num === 1 && getCustomerName()}
-                  {num === 2 && (section2Done ? 'Grau informado' : 'Sem grau')}
-                  {num === 3 && `${formatCurrency(parseFloat(saleDetails.total_value || '0'))}`}
-                </p>
-              )}
-            </div>
-          </div>
-          <ChevronDown size={18} className={`text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
-        </button>
-        {isOpen && <div className="px-4 pb-4 border-t border-gray-100 pt-4">{children}</div>}
-      </div>
-    );
-  }
-
   return (
     <div className="p-4 md:p-8 max-w-4xl mx-auto pb-24">
       <header className="mb-6">
@@ -405,7 +409,7 @@ export default function SalesPage() {
       <form onSubmit={handleCreateSale} className="space-y-3">
         
         {/* SEÇÃO 1: CLIENTE */}
-        <AccordionSection num={1} title="Cliente" done={section1Done} canOpen={true}>
+        <AccordionSection num={1} title="Cliente" done={section1Done} canOpen={true} isOpen={activeSection === 1} onToggle={() => setActiveSection(activeSection === 1 ? 0 : 1)} summary={section1Done ? getCustomerName() : ''}>
           <div className="flex justify-between items-center mb-3">
             <button
               type="button"
@@ -520,7 +524,7 @@ export default function SalesPage() {
         </AccordionSection>
 
         {/* SEÇÃO 2: GRAU (PRESCRIÇÃO) */}
-        <AccordionSection num={2} title="Receita / Grau" done={section2Done} canOpen={section1Done}>
+        <AccordionSection num={2} title="Receita / Grau" done={section2Done} canOpen={section1Done} isOpen={activeSection === 2} onToggle={() => setActiveSection(activeSection === 2 ? 0 : 2)} summary={section2Done ? 'Grau informado' : ''}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-3 bg-gray-50 rounded-2xl border border-gray-100">
             <div className="space-y-2">
               <h3 className="font-bold text-xs text-gray-700 border-b pb-1 text-center sm:text-left">Olho Direito (OD)</h3>
@@ -575,7 +579,7 @@ export default function SalesPage() {
         </AccordionSection>
 
         {/* SEÇÃO 3: DETALHES DE ARMAÇÃO / LENTE / O.S. */}
-        <AccordionSection num={3} title="Armação / Laboratório" done={section3Done} canOpen={section1Done}>
+        <AccordionSection num={3} title="Armação / Laboratório" done={section3Done} canOpen={section1Done} isOpen={activeSection === 3} onToggle={() => setActiveSection(activeSection === 3 ? 0 : 3)} summary={section3Done ? formatCurrency(parseFloat(saleDetails.total_value || '0')) : ''}>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Modelo de Armação</label>
@@ -608,7 +612,7 @@ export default function SalesPage() {
         </AccordionSection>
 
         {/* SEÇÃO 4: FINANCEIRO / PAGAMENTO */}
-        <AccordionSection num={4} title="Pagamento" done={false} canOpen={section1Done && section3Done}>
+        <AccordionSection num={4} title="Pagamento" done={false} canOpen={section1Done && section3Done} isOpen={activeSection === 4} onToggle={() => setActiveSection(activeSection === 4 ? 0 : 4)}>
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Forma de Pagamento</label>
