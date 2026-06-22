@@ -78,15 +78,37 @@ export default function CustomersPage() {
     }
   }
 
-  const totalPaid = (customerFinancials || []).filter(f => f?.status === 'Paid').reduce((acc, curr) => acc + (Number(curr?.amount) || 0), 0);
-  const totalPending = (customerFinancials || []).filter(f => f?.status === 'Pending').reduce((acc, curr) => acc + (Number(curr?.amount) || 0), 0);
-  const overdueRecords = (customerFinancials || []).filter(f => {
+  const today = new Date(new Date().toDateString());
+
+  const paidIncomeRecords = (customerFinancials || []).filter(f => f?.status === 'Paid' && f?.type === 'Income');
+  const paidExpenseRecords = (customerFinancials || []).filter(f => f?.status === 'Paid' && f?.type === 'Expense');
+  const totalPaidIncome = paidIncomeRecords.reduce((acc, curr) => acc + (Number(curr?.amount) || 0), 0);
+  const totalPaidExpense = paidExpenseRecords.reduce((acc, curr) => acc + (Number(curr?.amount) || 0), 0);
+
+  const overdueIncome = (customerFinancials || []).filter(f => {
     if (!f?.due_date) return false;
-    return f.status === 'Pending' && new Date(f.due_date) < new Date(new Date().toDateString());
+    return f.status === 'Pending' && f.type === 'Income' && new Date(f.due_date) < today;
   });
-  const totalOverdue = overdueRecords.reduce((acc, curr) => acc + (Number(curr?.amount) || 0), 0);
-  const paidRecords = (customerFinancials || []).filter(f => f?.status === 'Paid');
-  const pendingRecords = (customerFinancials || []).filter(f => f?.status === 'Pending' && !overdueRecords.some(o => o.id === f.id));
+  const totalOverdueIncome = overdueIncome.reduce((acc, curr) => acc + (Number(curr?.amount) || 0), 0);
+
+  const overdueExpense = (customerFinancials || []).filter(f => {
+    if (!f?.due_date) return false;
+    return f.status === 'Pending' && f.type === 'Expense' && new Date(f.due_date) < today;
+  });
+  const totalOverdueExpense = overdueExpense.reduce((acc, curr) => acc + (Number(curr?.amount) || 0), 0);
+
+  const overdueAll = [...overdueIncome, ...overdueExpense];
+  const totalOverdueAll = totalOverdueIncome + totalOverdueExpense;
+
+  const pendingIncomeRecords = (customerFinancials || []).filter(f =>
+    f?.status === 'Pending' && f?.type === 'Income' && !overdueIncome.some(o => o.id === f.id)
+  );
+  const totalToReceive = pendingIncomeRecords.reduce((acc, curr) => acc + (Number(curr?.amount) || 0), 0);
+
+  const pendingExpenseRecords = (customerFinancials || []).filter(f =>
+    f?.status === 'Pending' && f?.type === 'Expense' && !overdueExpense.some(o => o.id === f.id)
+  );
+  const totalToPay = pendingExpenseRecords.reduce((acc, curr) => acc + (Number(curr?.amount) || 0), 0);
 
   const filteredCustomers = searchQuery
     ? customers.filter(c =>
@@ -112,12 +134,12 @@ export default function CustomersPage() {
       return;
     }
     const phoneClean = customer.phone.replace(/\D/g, '');
-    const items = overdueRecords.map(r => `- ${r.description}: ${formatCurrency(Number(r.amount))}`).join('\n');
+    const items = overdueIncome.map(r => `- ${r.description}: ${formatCurrency(Number(r.amount))}`).join('\n');
     const msg = encodeURIComponent(
       `Olá ${customer.name}! Tudo bem?\n\n` +
-      `Identificamos que há valor${overdueRecords.length > 1 ? 'es' : ''} pendente${overdueRecords.length > 1 ? 's' : ''} em nosso sistema:\n\n` +
+      `Identificamos que há valor${overdueIncome.length > 1 ? 'es' : ''} pendente${overdueIncome.length > 1 ? 's' : ''} em nosso sistema:\n\n` +
       `${items}\n\n` +
-      `Valor total em atraso: ${formatCurrency(totalOverdue)}\n\n` +
+      `Valor total em atraso: ${formatCurrency(totalOverdueIncome)}\n\n` +
       `Pedimos gentilmente que entre em contato conosco para regularizar. Estamos à disposição!`
     );
     window.open(`https://wa.me/55${phoneClean}?text=${msg}`, '_blank');
@@ -258,51 +280,82 @@ export default function CustomersPage() {
                       </div>
 
                       {/* RESUMO FINANCEIRO - CARDS CLICÁVEIS */}
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                         <button onClick={() => toggleFinSection('paid')} className={`text-left p-3 rounded-xl border transition-all overflow-hidden ${expandedFinSection === 'paid' ? 'bg-green-100 border-green-300 shadow-sm' : 'bg-green-50 border-green-100 hover:bg-green-100'}`}>
-                          <p className="text-green-600 text-[10px] font-medium uppercase">Pago</p>
-                          <p className="text-lg font-bold text-green-700 truncate">{formatCurrency(totalPaid)}</p>
+                          <p className="text-green-600 text-[10px] font-medium uppercase">Recebido</p>
+                          <p className="text-lg font-bold text-green-700 truncate">{formatCurrency(totalPaidIncome + totalPaidExpense)}</p>
                         </button>
-                        <button onClick={() => toggleFinSection('pending')} className={`text-left p-3 rounded-xl border transition-all overflow-hidden ${expandedFinSection === 'pending' ? 'bg-yellow-100 border-yellow-300 shadow-sm' : 'bg-yellow-50 border-yellow-100 hover:bg-yellow-100'}`}>
+                        <button onClick={() => toggleFinSection('to_receive')} className={`text-left p-3 rounded-xl border transition-all overflow-hidden ${expandedFinSection === 'to_receive' ? 'bg-yellow-100 border-yellow-300 shadow-sm' : 'bg-yellow-50 border-yellow-100 hover:bg-yellow-100'}`}>
                           <p className="text-yellow-600 text-[10px] font-medium uppercase">A Receber</p>
-                          <p className="text-lg font-bold text-yellow-700 truncate">{formatCurrency(totalPending)}</p>
+                          <p className="text-lg font-bold text-yellow-700 truncate">{formatCurrency(totalToReceive)}</p>
+                          {pendingIncomeRecords.length > 0 && (
+                            <p className="text-[10px] text-yellow-500 font-semibold">{pendingIncomeRecords.length} registro(s)</p>
+                          )}
                         </button>
-                        <button onClick={() => { if (overdueRecords.length > 0) toggleFinSection('overdue'); }} className={`text-left p-3 rounded-xl border transition-all overflow-hidden ${overdueRecords.length === 0 ? 'opacity-50 cursor-not-allowed' : ''} ${expandedFinSection === 'overdue' ? 'bg-red-100 border-red-300 shadow-sm' : 'bg-red-50 border-red-100 hover:bg-red-100'}`}>
+                        <button onClick={() => toggleFinSection('to_pay')} className={`text-left p-3 rounded-xl border transition-all overflow-hidden ${expandedFinSection === 'to_pay' ? 'bg-orange-100 border-orange-300 shadow-sm' : 'bg-orange-50 border-orange-100 hover:bg-orange-100'}`}>
+                          <p className="text-orange-600 text-[10px] font-medium uppercase">A Pagar</p>
+                          <p className="text-lg font-bold text-orange-700 truncate">{formatCurrency(totalToPay)}</p>
+                          {pendingExpenseRecords.length > 0 && (
+                            <p className="text-[10px] text-orange-500 font-semibold">{pendingExpenseRecords.length} registro(s)</p>
+                          )}
+                        </button>
+                        <button onClick={() => { if (overdueAll.length > 0) toggleFinSection('overdue'); }} className={`text-left p-3 rounded-xl border transition-all overflow-hidden ${overdueAll.length === 0 ? 'opacity-50 cursor-not-allowed' : ''} ${expandedFinSection === 'overdue' ? 'bg-red-100 border-red-300 shadow-sm' : 'bg-red-50 border-red-100 hover:bg-red-100'}`}>
                           <p className="text-red-600 text-[10px] font-medium uppercase">Em Atraso</p>
-                          <p className="text-lg font-bold text-red-700 truncate">{formatCurrency(totalOverdue)}</p>
-                          {overdueRecords.length > 0 && (
-                            <p className="text-[10px] text-red-500 font-semibold">{overdueRecords.length} registro(s)</p>
+                          <p className="text-lg font-bold text-red-700 truncate">{formatCurrency(totalOverdueAll)}</p>
+                          {overdueAll.length > 0 && (
+                            <p className="text-[10px] text-red-500 font-semibold">{overdueAll.length} registro(s)</p>
                           )}
                         </button>
                       </div>
 
                       {/* LISTA EXPANSÍVEL - PAGOS */}
-                      {expandedFinSection === 'paid' && paidRecords.length > 0 && (
-                        <div className="bg-white rounded-xl border border-green-100 p-3 space-y-2">
+                      {expandedFinSection === 'paid' && (paidIncomeRecords.length > 0 || paidExpenseRecords.length > 0) && (
+                        <div className="bg-white rounded-xl border border-green-100 p-3 space-y-3">
                           <p className="text-xs font-bold text-green-600 uppercase flex items-center gap-1">
-                            <CheckCircle size={14} /> Registros Pagos
+                            <CheckCircle size={14} /> Recebido
                           </p>
-                          {paidRecords.map((rec: any) => (
-                            <div key={rec.id} className="flex items-center justify-between text-sm py-1.5 border-b border-gray-50 last:border-0">
-                              <div>
-                                <p className="text-gray-800 font-medium">{rec.description}</p>
-                                <p className="text-[11px] text-gray-400 flex items-center gap-1">
-                                  <Calendar size={10} /> {new Date(rec.due_date).toLocaleDateString('pt-BR')}
-                                </p>
-                              </div>
-                              <p className="font-bold text-green-600">{formatCurrency(Number(rec.amount))}</p>
+                          {paidIncomeRecords.length > 0 && (
+                            <div>
+                              <p className="text-[10px] font-bold text-green-500 uppercase mb-1">Receitas (+)</p>
+                              {paidIncomeRecords.map((rec: any) => (
+                                <div key={rec.id} className="flex items-center justify-between text-sm py-1.5 border-b border-gray-50 last:border-0">
+                                  <div>
+                                    <p className="text-gray-800 font-medium">{rec.description}</p>
+                                    <p className="text-[11px] text-gray-400 flex items-center gap-1">
+                                      <Calendar size={10} /> {new Date(rec.due_date).toLocaleDateString('pt-BR')}
+                                    </p>
+                                  </div>
+                                  <p className="font-bold text-green-600">+ {formatCurrency(Number(rec.amount))}</p>
+                                </div>
+                              ))}
                             </div>
-                          ))}
+                          )}
+                          {paidExpenseRecords.length > 0 && (
+                            <div>
+                              <p className="text-[10px] font-bold text-red-500 uppercase mb-1">Despesas (-)</p>
+                              {paidExpenseRecords.map((rec: any) => (
+                                <div key={rec.id} className="flex items-center justify-between text-sm py-1.5 border-b border-gray-50 last:border-0">
+                                  <div>
+                                    <p className="text-gray-800 font-medium">{rec.description}</p>
+                                    <p className="text-[11px] text-gray-400 flex items-center gap-1">
+                                      <Calendar size={10} /> {new Date(rec.due_date).toLocaleDateString('pt-BR')}
+                                    </p>
+                                  </div>
+                                  <p className="font-bold text-red-600">- {formatCurrency(Number(rec.amount))}</p>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       )}
 
                       {/* LISTA EXPANSÍVEL - A RECEBER */}
-                      {expandedFinSection === 'pending' && pendingRecords.length > 0 && (
+                      {expandedFinSection === 'to_receive' && pendingIncomeRecords.length > 0 && (
                         <div className="bg-white rounded-xl border border-yellow-100 p-3 space-y-2">
                           <p className="text-xs font-bold text-yellow-600 uppercase flex items-center gap-1">
                             <Clock size={14} /> A Receber (em dia)
                           </p>
-                          {pendingRecords.map((rec: any) => (
+                          {pendingIncomeRecords.map((rec: any) => (
                             <div key={rec.id} className="flex items-center justify-between text-sm py-1.5 border-b border-gray-50 last:border-0">
                               <div>
                                 <p className="text-gray-800 font-medium">{rec.description}</p>
@@ -316,23 +369,64 @@ export default function CustomersPage() {
                         </div>
                       )}
 
-                      {/* LISTA EXPANSÍVEL - EM ATRASO */}
-                      {expandedFinSection === 'overdue' && overdueRecords.length > 0 && (
-                        <div className="bg-white rounded-xl border border-red-100 p-3 space-y-2">
-                          <p className="text-xs font-bold text-red-600 uppercase flex items-center gap-1">
-                            <AlertCircle size={14} /> Em Atraso
+                      {/* LISTA EXPANSÍVEL - A PAGAR */}
+                      {expandedFinSection === 'to_pay' && pendingExpenseRecords.length > 0 && (
+                        <div className="bg-white rounded-xl border border-orange-100 p-3 space-y-2">
+                          <p className="text-xs font-bold text-orange-600 uppercase flex items-center gap-1">
+                            <Clock size={14} /> A Pagar (em dia)
                           </p>
-                          {overdueRecords.map((rec: any) => (
+                          {pendingExpenseRecords.map((rec: any) => (
                             <div key={rec.id} className="flex items-center justify-between text-sm py-1.5 border-b border-gray-50 last:border-0">
                               <div>
                                 <p className="text-gray-800 font-medium">{rec.description}</p>
-                                <p className="text-[11px] text-red-400 flex items-center gap-1">
-                                  <Calendar size={10} /> Venceu: {new Date(rec.due_date).toLocaleDateString('pt-BR')}
+                                <p className="text-[11px] text-gray-400 flex items-center gap-1">
+                                  <Calendar size={10} /> Vence: {new Date(rec.due_date).toLocaleDateString('pt-BR')}
                                 </p>
                               </div>
-                              <p className="font-bold text-red-600">{formatCurrency(Number(rec.amount))}</p>
+                              <p className="font-bold text-orange-600">{formatCurrency(Number(rec.amount))}</p>
                             </div>
                           ))}
+                        </div>
+                      )}
+
+                      {/* LISTA EXPANSÍVEL - EM ATRASO */}
+                      {expandedFinSection === 'overdue' && overdueAll.length > 0 && (
+                        <div className="bg-white rounded-xl border border-red-100 p-3 space-y-3">
+                          <p className="text-xs font-bold text-red-600 uppercase flex items-center gap-1">
+                            <AlertCircle size={14} /> Em Atraso
+                          </p>
+                          {overdueIncome.length > 0 && (
+                            <div>
+                              <p className="text-[10px] font-bold text-red-500 uppercase mb-1">A Receber (atrasado)</p>
+                              {overdueIncome.map((rec: any) => (
+                                <div key={rec.id} className="flex items-center justify-between text-sm py-1.5 border-b border-gray-50 last:border-0">
+                                  <div>
+                                    <p className="text-gray-800 font-medium">{rec.description}</p>
+                                    <p className="text-[11px] text-red-400 flex items-center gap-1">
+                                      <Calendar size={10} /> Venceu: {new Date(rec.due_date).toLocaleDateString('pt-BR')}
+                                    </p>
+                                  </div>
+                                  <p className="font-bold text-red-600">{formatCurrency(Number(rec.amount))}</p>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          {overdueExpense.length > 0 && (
+                            <div>
+                              <p className="text-[10px] font-bold text-red-500 uppercase mb-1">A Pagar (atrasado)</p>
+                              {overdueExpense.map((rec: any) => (
+                                <div key={rec.id} className="flex items-center justify-between text-sm py-1.5 border-b border-gray-50 last:border-0">
+                                  <div>
+                                    <p className="text-gray-800 font-medium">{rec.description}</p>
+                                    <p className="text-[11px] text-red-400 flex items-center gap-1">
+                                      <Calendar size={10} /> Venceu: {new Date(rec.due_date).toLocaleDateString('pt-BR')}
+                                    </p>
+                                  </div>
+                                  <p className="font-bold text-red-600">{formatCurrency(Number(rec.amount))}</p>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       )}
 
@@ -371,12 +465,12 @@ export default function CustomersPage() {
                         >
                           <MessageCircle size={16} /> WhatsApp
                         </button>
-                        {overdueRecords.length > 0 && (
+                        {overdueIncome.length > 0 && (
                           <button
                             onClick={() => handleCharge(customer)}
                             className="flex-1 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold text-sm rounded-xl transition-colors flex items-center justify-center gap-1.5"
                           >
-                            <AlertCircle size={16} /> Cobrar ({overdueRecords.length})
+                            <AlertCircle size={16} /> Cobrar ({overdueIncome.length})
                           </button>
                         )}
                       </div>
