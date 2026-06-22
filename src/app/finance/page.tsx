@@ -27,6 +27,10 @@ export default function FinancePage() {
     status: 'Pending'
   });
 
+  // Estados para recorrência
+  const [recurrenceEnabled, setRecurrenceEnabled] = useState(false);
+  const [recurrenceCount, setRecurrenceCount] = useState(1);
+
   // Estados para o fornecedor (Despesas)
   const [supplierSearch, setSupplierSearch] = useState('');
   const [supplierCnpj, setSupplierCnpj] = useState('');
@@ -61,7 +65,6 @@ export default function FinancePage() {
   async function handleAddRecord(e: React.FormEvent) {
     e.preventDefault();
 
-    // 1. Busca o shop_id do perfil do usuário logado
     const { data: profile } = await supabase
       .from('profiles')
       .select('shop_id')
@@ -72,14 +75,33 @@ export default function FinancePage() {
       return;
     }
 
-    const { error } = await supabase
-      .from('financial_records')
-      .insert([{
-        ...formData,
-        amount: parseFloat(formData.amount),
+    const baseAmount = parseFloat(formData.amount);
+    const count = recurrenceEnabled ? recurrenceCount : 1;
+    const baseDate = new Date(formData.due_date);
+    const inserts = [];
+
+    for (let i = 0; i < count; i++) {
+      const dueDate = new Date(baseDate);
+      dueDate.setMonth(dueDate.getMonth() + i);
+      const desc = count > 1
+        ? `${formData.description} (${i + 1}/${count})`
+        : formData.description;
+
+      inserts.push({
+        type: formData.type,
+        description: desc,
+        amount: baseAmount,
+        due_date: getLocalDate(dueDate),
+        status: i === 0 ? formData.status : 'Pending',
+        payment_date: i === 0 && formData.status === 'Paid' ? getLocalDate() : null,
         customer_id: formData.type === 'Expense' ? selectedCustomerId : null,
         shop_id: profile.shop_id
-      }]);
+      });
+    }
+
+    const { error } = await supabase
+      .from('financial_records')
+      .insert(inserts);
     
     if (!error) {
       setShowForm(false);
@@ -171,6 +193,8 @@ export default function FinancePage() {
     setSupplierCnpj('');
     setSelectedCustomerId(null);
     setShowSuggestions(false);
+    setRecurrenceEnabled(false);
+    setRecurrenceCount(1);
   }
 
   // Filtra as sugestões de fornecedor com base na pesquisa
@@ -358,6 +382,39 @@ export default function FinancePage() {
                 </div>
               </div>
 
+              {/* RECORRÊNCIA */}
+              <div className="bg-gray-50 border border-gray-100 rounded-xl p-3 space-y-2">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={recurrenceEnabled}
+                    onChange={(e) => setRecurrenceEnabled(e.target.checked)}
+                    className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                  />
+                  <span className="text-sm font-medium text-gray-700">Lançamento Recorrente</span>
+                </label>
+                {recurrenceEnabled && (
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-1">Repetir por</label>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        min="1"
+                        max="120"
+                        required
+                        className="w-20 p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-gray-950 text-center"
+                        value={recurrenceCount}
+                        onChange={(e) => setRecurrenceCount(Math.max(1, parseInt(e.target.value) || 1))}
+                      />
+                      <span className="text-sm text-gray-500">meses</span>
+                    </div>
+                    <p className="text-[11px] text-gray-400 mt-1">
+                      Serão criados {recurrenceCount} lançamentos com vencimento mensal.
+                    </p>
+                  </div>
+                )}
+              </div>
+
               <div className="flex gap-3 mt-6">
                 <button 
                   type="button" 
@@ -439,7 +496,12 @@ export default function FinancePage() {
               </div>
               
               <div className="flex-1">
-                <p className="font-semibold text-gray-800">{record.description}</p>
+                <p className="font-semibold text-gray-800">
+                  {record.description}
+                  {record.description.match(/\(\d+\/\d+\)/) && (
+                    <span className="ml-2 text-[10px] bg-blue-100 text-blue-700 font-bold px-1.5 py-0.5 rounded">Recorrente</span>
+                  )}
+                </p>
                 
                 {/* Fornecedor Informações se houver vinculação */}
                 {record.customers && (
