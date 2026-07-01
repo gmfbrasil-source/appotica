@@ -15,7 +15,8 @@ import {
   Plus, 
   Loader2, 
   ClipboardList,
-  ChevronDown
+  ChevronDown,
+  MessageCircle
 } from 'lucide-react';
 
 function getLocalDate(date?: Date): string {
@@ -102,6 +103,7 @@ export default function SalesPage() {
 
   // Opções de venda
   const [geraOS, setGeraOS] = useState(true);
+  const [entregueAgora, setEntregueAgora] = useState(false);
   const [firstDueDate, setFirstDueDate] = useState(getLocalDate(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)));
 
   // Dados de Pagamento / Financeiro
@@ -303,16 +305,37 @@ export default function SalesPage() {
       if (finErr) throw finErr;
 
       const clientName = isNewCustomer ? newCustomer.name : (customers.find(c => c.id === finalCustomerId)?.name || 'Cliente');
+      const clientPhone = isNewCustomer ? newCustomer.phone : (customers.find(c => c.id === finalCustomerId)?.phone || '');
+      // Monta dados das parcelas para o carnê
+      const installmentData: { num: number; due: string; amount: number }[] = [];
+      if (instCount > 0 && restante > 0) {
+        const firstDate = new Date(firstDueDate);
+        for (let i = 0; i < instCount; i++) {
+          const baseValor = restante / instCount;
+          let valorParcela = Math.floor(baseValor * 100) / 100;
+          if (i === instCount - 1) valorParcela = Math.round((restante - valorParcela * (instCount - 1)) * 100) / 100;
+          const due = new Date(firstDate);
+          due.setDate(due.getDate() + i * 30);
+          installmentData.push({ num: i + 1, due: due.toLocaleDateString('pt-BR'), amount: valorParcela });
+        }
+      }
       setCreatedOS({
         id: osData?.id || null,
         geraOS,
+        entregueAgora,
         clientName,
-        phone: isNewCustomer ? newCustomer.phone : (customers.find(c => c.id === finalCustomerId)?.phone || ''),
+        phone: clientPhone,
         cpf: isNewCustomer ? newCustomer.cpf : (customers.find(c => c.id === finalCustomerId)?.cpf || ''),
+        email: isNewCustomer ? newCustomer.email : (customers.find(c => c.id === finalCustomerId)?.email || ''),
         frame: saleDetails.frame,
         lenses: saleDetails.lenses,
         scheduled_date: saleDetails.scheduled_date,
         total_value: totalVal,
+        entrada,
+        restante,
+        instCount,
+        installmentData,
+        paymentMethod: payment.method,
         prescription: hasPrescriptionData ? prescription : null,
         notes: saleDetails.notes
       });
@@ -346,10 +369,12 @@ export default function SalesPage() {
     });
     setPayment({ method: 'Pix', downPayment: '', installments: '1', status: 'Paid' });
     setGeraOS(true);
+    setEntregueAgora(false);
     setFirstDueDate(getLocalDate(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)));
   }
 
   const printAreaRef = useRef<HTMLDivElement>(null);
+  const carneRef = useRef<HTMLDivElement>(null);
 
   function handlePrint() {
     const printContent = printAreaRef.current?.innerHTML;
@@ -574,6 +599,18 @@ export default function SalesPage() {
             </div>
           )}
 
+          {!geraOS && (
+            <label className="flex items-center gap-2 mt-3 mb-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={entregueAgora}
+                onChange={(e) => setEntregueAgora(e.target.checked)}
+                className="w-4 h-4 text-green-600 rounded focus:ring-green-500"
+              />
+              <span className="text-sm font-medium text-gray-700">Cliente levou no ato (Entregue)</span>
+            </label>
+          )}
+
           <div className="mt-3">
             <label className="block text-sm font-medium text-gray-700 mb-1">Valor Total da Venda</label>
             <input type="number" step="0.01" required placeholder="R$ 0.00" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 font-bold focus:ring-2 focus:ring-blue-500 outline-none" value={saleDetails.total_value} onChange={(e) => setSaleDetails({...saleDetails, total_value: e.target.value})} />
@@ -669,13 +706,12 @@ export default function SalesPage() {
               <p className="text-gray-500 text-sm mt-1">
                 {createdOS.geraOS
                   ? 'A O.S. foi criada e os lançamentos financeiros foram registrados.'
-                  : 'Os lançamentos financeiros foram registrados.'}
+                  : `Venda registrada no financeiro.${createdOS.entregueAgora ? ' Produto entregue ao cliente.' : ''}`}
               </p>
             </div>
 
-            {createdOS.geraOS ? (
-              <>
-              {/* ÁREA DE IMPRESSÃO DA O.S. */}
+            {/* ÁREA DE IMPRESSÃO DA O.S. (só quando geraOS) */}
+            {createdOS.geraOS && (
               <div
                 ref={printAreaRef}
                 className="border-2 border-dashed border-gray-200 p-6 rounded-2xl bg-gray-50 text-black font-mono text-sm max-h-96 overflow-y-auto"
@@ -737,23 +773,102 @@ export default function SalesPage() {
                   <p className="mt-1">AppÓtica - Gestão na palma da mão.</p>
                 </div>
               </div>
+            )}
 
-              <div className="flex gap-3">
+            {/* CARNÊ DE PAGAMENTO (para todas as vendas com parcelas) */}
+            {createdOS.installmentData && createdOS.installmentData.length > 0 && (
+              <div className="space-y-3">
+                <div
+                  ref={carneRef}
+                  className="border-2 border-dashed border-gray-200 p-5 rounded-2xl bg-gray-50 text-black font-mono text-sm max-h-72 overflow-y-auto"
+                >
+                  <div className="text-center border-b pb-3 mb-3">
+                    <h3 className="font-bold text-lg uppercase">CARNÊ DE PAGAMENTO</h3>
+                    <p className="text-xs">{companyInfo.nomeFantasia} | {companyInfo.cnpj}</p>
+                  </div>
+                  <div className="space-y-1 mb-4 pb-3 border-b text-xs">
+                    <p><strong>Cliente:</strong> {createdOS.clientName}</p>
+                    {createdOS.cpf && <p><strong>CPF:</strong> {createdOS.cpf}</p>}
+                    <p><strong>Total:</strong> {formatCurrency(createdOS.total_value)}</p>
+                  </div>
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="py-1">Parcela</th>
+                        <th className="py-1">Vencimento</th>
+                        <th className="py-1">Valor</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {createdOS.installmentData.map((inst: any) => (
+                        <tr key={inst.num} className="border-b border-gray-100">
+                          <td className="py-1">{inst.num}/{createdOS.instCount}</td>
+                          <td className="py-1">{inst.due}</td>
+                          <td className="py-1 font-bold">{formatCurrency(inst.amount)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <div className="text-center text-[10px] mt-4 pt-3 border-t text-gray-400">
+                    <p>AppÓtica - Gestão na palma da mão.</p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <button onClick={() => {
+                    const content = carneRef.current?.innerHTML;
+                    if (content) {
+                      document.body.innerHTML = `<html><head><style>body{font-family:monospace;padding:20px;}</style></head><body>${content}</body></html>`;
+                      window.print();
+                      window.location.reload();
+                    }
+                  }} className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-all text-sm flex items-center justify-center gap-1.5 min-w-[120px]">
+                    <Printer size={16} /> Imprimir Carnê
+                  </button>
+                  {createdOS.phone && (
+                    <button onClick={() => {
+                      const phoneClean = createdOS.phone.replace(/\D/g, '');
+                      let msg = `Olá ${createdOS.clientName}! Segue o carnê de pagamento da sua compra na ${companyInfo.nomeFantasia}:\n\n`;
+                      createdOS.installmentData.forEach((inst: any) => {
+                        msg += `• ${inst.num}/${createdOS.instCount} - Vence ${inst.due} - ${formatCurrency(inst.amount)}\n`;
+                      });
+                      msg += `\nTotal: ${formatCurrency(createdOS.total_value)}`;
+                      window.open(`https://wa.me/55${phoneClean}?text=${encodeURIComponent(msg)}`, '_blank');
+                    }} className="flex-1 py-2.5 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl transition-all text-sm flex items-center justify-center gap-1.5 min-w-[120px]">
+                      <MessageCircle size={16} /> WhatsApp
+                    </button>
+                  )}
+                  {createdOS.email && (
+                    <button onClick={() => {
+                      let body = `Olá ${createdOS.clientName},\n\nSegue o carnê de pagamento:\n\n`;
+                      createdOS.installmentData.forEach((inst: any) => {
+                        body += `${inst.num}/${createdOS.instCount} - ${inst.due} - ${formatCurrency(inst.amount)}\n`;
+                      });
+                      body += `\nTotal: ${formatCurrency(createdOS.total_value)}\n\n${companyInfo.nomeFantasia}`;
+                      window.open(`mailto:${createdOS.email}?subject=Carnê de Pagamento - ${companyInfo.nomeFantasia}&body=${encodeURIComponent(body)}`, '_blank');
+                    }} className="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl transition-all text-sm flex items-center justify-center gap-1.5 min-w-[120px]">
+                      <FileText size={16} /> E-mail
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* BOTÕES PRINCIPAIS */}
+            <div className="flex gap-3">
+              {createdOS.geraOS && (
+                <>
                 <button onClick={() => setShowPrintModal(false)} className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl transition-colors">
                   Fechar Painel
                 </button>
                 <button onClick={handlePrint} className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-all shadow-lg flex items-center justify-center gap-2">
                   <Printer size={18} /> Imprimir O.S. (Lab)
                 </button>
-              </div>
-              </>
-            ) : (
-              <div className="flex gap-3">
-                <button onClick={() => { setShowPrintModal(false); window.location.reload(); }} className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-colors">
-                  Nova Venda
-                </button>
-              </div>
-            )}
+                </>
+              )}
+              <button onClick={() => { setShowPrintModal(false); window.location.reload(); }} className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-colors">
+                Nova Venda
+              </button>
+            </div>
           </div>
         </div>
       )}
