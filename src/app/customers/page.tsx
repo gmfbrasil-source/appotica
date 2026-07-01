@@ -507,7 +507,7 @@ export default function CustomersPage() {
                             {customerOrders.map((os: any) => (
                               <Link key={os.id} href={`/os/${os.id}`} className="flex items-center justify-between p-2.5 bg-gray-50 rounded-xl border border-gray-100 hover:bg-gray-100 transition-colors">
                                 <div>
-                                  <p className="text-sm font-semibold text-gray-800">O.S. #{os.id.slice(0, 8)}</p>
+                                   <p className="text-sm font-semibold text-gray-800">{os.os_number ? `Nº ${os.os_number}` : `O.S. #${os.id.slice(0, 8)}`}</p>
                                   <p className="text-xs text-gray-500">{new Date(os.created_at).toLocaleDateString('pt-BR')}</p>
                                 </div>
                                 <div className="flex items-center gap-2">

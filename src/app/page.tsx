@@ -173,7 +173,7 @@ export default function Dashboard() {
                       </div>
                       <div className="min-w-0">
                         <p className="text-sm font-semibold text-gray-800 truncate">{os.customers?.name || 'Cliente'}</p>
-                        <p className="text-[10px] text-gray-400">#{os.id.slice(0, 8)}</p>
+                        <p className="text-[10px] text-gray-400">{os.os_number ? os.os_number : `#${os.id.slice(0, 8)}`}</p>
                       </div>
                     </div>
                     <span className={`text-[10px] px-2 py-1 rounded-full font-bold uppercase flex-shrink-0 ${

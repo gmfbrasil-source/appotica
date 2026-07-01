@@ -103,6 +103,7 @@ export default function SalesPage() {
 
   // Opções de venda
   const [isSunglasses, setIsSunglasses] = useState(false);
+  const [osNumber, setOsNumber] = useState('');
   const [geraOS, setGeraOS] = useState(true);
   const [entregueAgora, setEntregueAgora] = useState(false);
   const [firstDueDate, setFirstDueDate] = useState(getLocalDate(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)));
@@ -226,15 +227,17 @@ export default function SalesPage() {
       let osData: any = null;
       if (geraOS) {
         const notesOS = `Armação: ${saleDetails.frame || 'Não informada'}\nLente: ${saleDetails.lenses || 'Não informada'}\nObservações: ${saleDetails.notes || 'Nenhuma'}`;
+        const osPayload: any = {
+          customer_id: finalCustomerId, shop_id: shopId,
+          status: 'In_Laboratory',
+          total_value: totalVal,
+          scheduled_date: saleDetails.scheduled_date,
+          notes: notesOS
+        };
+        if (osNumber.trim()) osPayload.os_number = osNumber.trim();
         const { data: osResult, error: osErr } = await supabase
           .from('service_orders')
-          .insert([{
-            customer_id: finalCustomerId, shop_id: shopId,
-            status: 'In_Laboratory',
-            total_value: totalVal,
-            scheduled_date: saleDetails.scheduled_date,
-            notes: notesOS
-          }])
+          .insert([osPayload])
           .select('*, customers(name, phone, cpf)')
           .single();
         if (osErr) throw osErr;
@@ -328,6 +331,7 @@ export default function SalesPage() {
         phone: clientPhone,
         cpf: isNewCustomer ? newCustomer.cpf : (customers.find(c => c.id === finalCustomerId)?.cpf || ''),
         email: isNewCustomer ? newCustomer.email : (customers.find(c => c.id === finalCustomerId)?.email || ''),
+        osNumber: osNumber.trim() || osData?.os_number || null,
         frame: saleDetails.frame,
         lenses: saleDetails.lenses,
         scheduled_date: saleDetails.scheduled_date,
@@ -370,6 +374,7 @@ export default function SalesPage() {
     });
     setPayment({ method: 'Pix', downPayment: '', installments: '1', status: 'Paid' });
     setIsSunglasses(false);
+    setOsNumber('');
     setGeraOS(true);
     setEntregueAgora(false);
     setFirstDueDate(getLocalDate(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)));
@@ -593,6 +598,13 @@ export default function SalesPage() {
           </label>
 
           {geraOS && (
+            <div className="mb-3">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Nº da O.S. (opcional)</label>
+              <input type="text" placeholder="Ex: 001/2026" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={osNumber} onChange={(e) => setOsNumber(e.target.value)} />
+            </div>
+          )}
+
+          {geraOS && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Modelo de Armação</label>
@@ -733,7 +745,7 @@ export default function SalesPage() {
               >
                 <div className="text-center border-b pb-4 mb-4">
                   <h3 className="font-bold text-lg uppercase">ORDEM DE SERVIÇO - LABORATÓRIO</h3>
-                  <p className="text-xs">Identificador: #{createdOS.id?.slice(0,8)}</p>
+                  <p className="text-xs">{createdOS.osNumber ? `O.S. Nº ${createdOS.osNumber}` : `Identificador: #${createdOS.id?.slice(0, 8)}`}</p>
                   <p className="text-xs">Data da Venda: {new Date().toLocaleDateString('pt-BR')}</p>
                   <p className="font-bold text-xs mt-2 text-red-600">PREVISÃO DE ENTREGA: {new Date(createdOS.scheduled_date).toLocaleDateString('pt-BR')}</p>
                 </div>

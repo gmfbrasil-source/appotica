@@ -130,7 +130,7 @@ export default function OSDetailPage() {
           <div className="flex justify-between items-start">
             <div>
               <h1 className="text-2xl font-black uppercase tracking-tight">Ordem de Serviço</h1>
-              <p className="text-gray-400 text-sm font-mono"># {osData.id.slice(0, 8)}</p>
+              <p className="text-gray-400 text-sm font-mono">{osData.os_number ? `Nº ${osData.os_number}` : `# ${osData.id.slice(0, 8)}`}</p>
             </div>
             <div className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${
               osData.status === 'Ready' ? 'bg-yellow-500 text-white' : 
@@ -244,7 +244,7 @@ export default function OSDetailPage() {
         <div ref={printAreaRef} className="p-8 text-black font-mono text-sm bg-white w-[80mm]">
           <div className="text-center border-b-2 border-black pb-4 mb-4">
             <h3 className="font-bold text-lg uppercase">ORDEM DE SERVIÇO - LAB</h3>
-            <p className="text-xs">OS: #{osData.id.slice(0,8)} | Data: {new Date().toLocaleDateString('pt-BR')}</p>
+            <p className="text-xs">{osData.os_number ? `OS Nº ${osData.os_number}` : `OS: #${osData.id.slice(0,8)}`} | Data: {new Date().toLocaleDateString('pt-BR')}</p>
             <p className="font-bold text-xs mt-2 text-red-600 uppercase">Entrega: {new Date(osData.scheduled_date).toLocaleDateString('pt-BR')}</p>
           </div>
           <div className="mb-4 space-y-1">

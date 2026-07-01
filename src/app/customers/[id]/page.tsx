@@ -221,7 +221,7 @@ export default function CustomerDetailsPage() {
                       <Calendar size={18} />
                     </div>
                     <div>
-                      <p className="font-bold text-gray-800">O.S. #{order.id.slice(0,8)}</p>
+                       <p className="font-bold text-gray-800">{order.os_number ? `Nº ${order.os_number}` : `O.S. #${order.id.slice(0,8)}`}</p>
                       <p className="text-xs text-gray-500">{new Date(order.created_at).toLocaleDateString('pt-BR')}</p>
                     </div>
                   </div>

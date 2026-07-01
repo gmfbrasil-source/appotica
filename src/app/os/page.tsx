@@ -15,7 +15,8 @@ export default function OSPage() {
     total_value: '',
     scheduled_date: '',
     status: 'Open',
-    notes: ''
+    notes: '',
+    os_number: ''
   });
 
   useEffect(() => {
@@ -57,7 +58,7 @@ export default function OSPage() {
     
     if (!error) {
       setShowForm(false);
-      setFormData({ customer_id: '', total_value: '', scheduled_date: '', status: 'Open', notes: '' });
+      setFormData({ customer_id: '', total_value: '', scheduled_date: '', status: 'Open', notes: '', os_number: '' });
       fetchOrders();
     } else {
       alert('Erro ao salvar: ' + error.message);
@@ -124,6 +125,16 @@ export default function OSPage() {
                 </div>
               </div>
               <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nº da O.S. (opcional)</label>
+                <input 
+                  type="text" 
+                  placeholder="Ex: 001/2026"
+                  className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                  value={formData.os_number}
+                  onChange={(e) => setFormData({...formData, os_number: e.target.value})}
+                />
+              </div>
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Notas/Observações</label>
                 <textarea 
                   className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
@@ -165,7 +176,7 @@ export default function OSPage() {
               <div className="flex justify-between items-start mb-2">
                 <div>
                   <p className="font-bold text-gray-800">{order.customers?.name || 'Cliente desconhecido'}</p>
-                  <p className="text-xs text-gray-500">O.S. #{order.id.slice(0,8)}</p>
+                  <p className="text-xs text-gray-500">{order.os_number ? `Nº ${order.os_number}` : `O.S. #${order.id.slice(0,8)}`}</p>
                 </div>
                 <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold uppercase ${statusConfig[order.status as keyof typeof statusConfig]?.color || 'bg-gray-100'}`}>
                   {statusConfig[order.status as keyof typeof statusConfig]?.icon}
