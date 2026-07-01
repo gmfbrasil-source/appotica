@@ -2,6 +2,10 @@
 ALTER TABLE financial_records 
 ADD COLUMN IF NOT EXISTS customer_id UUID REFERENCES customers(id) ON DELETE SET NULL;
 
+-- Adicionar coluna os_number para numeração manual de O.S.
+ALTER TABLE service_orders
+ADD COLUMN IF NOT EXISTS os_number TEXT;
+
 -- 1. CASCADE delete: ao excluir O.S., financeiro vinculado é excluído
 ALTER TABLE financial_records 
 DROP CONSTRAINT IF EXISTS financial_records_order_id_fkey,
@@ -9,6 +13,7 @@ ADD CONSTRAINT financial_records_order_id_fkey
   FOREIGN KEY (order_id) 
   REFERENCES service_orders(id) 
   ON DELETE CASCADE;
+
 
 -- 2. Tabela de fechamento de caixa
 CREATE TABLE IF NOT EXISTS cash_closing (
