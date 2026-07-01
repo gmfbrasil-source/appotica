@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { formatCurrency } from '@/lib/format';
-import { Plus, Search, User, ChevronDown, MessageCircle, AlertCircle, Calendar, DollarSign, ShoppingBag, X, Phone, Mail, FileText, CreditCard, CheckCircle, Clock, ArrowRight, MapPin } from 'lucide-react';
+import { Plus, Search, User, ChevronDown, MessageCircle, AlertCircle, Calendar, DollarSign, ShoppingBag, X, Phone, Mail, FileText, CreditCard, CheckCircle, Clock, ArrowRight, MapPin, Pencil } from 'lucide-react';
 import Link from 'next/link';
 
 export default function CustomersPage() {
@@ -17,6 +17,8 @@ export default function CustomersPage() {
   const [customerOrders, setCustomerOrders] = useState<any[]>([]);
   const [customerFinancials, setCustomerFinancials] = useState<any[]>([]);
   const [expandedFinSection, setExpandedFinSection] = useState<string | null>(null);
+  const [editingCustomer, setEditingCustomer] = useState(false);
+  const [editFormData, setEditFormData] = useState({ name: '', phone: '', email: '', cpf: '', cnpj: '', address: '' });
 
   useEffect(() => {
     fetchCustomers();
@@ -75,6 +77,22 @@ export default function CustomersPage() {
       console.error(err);
     } finally {
       setCustomerLoading(false);
+    }
+  }
+
+  async function handleUpdateCustomer(e: React.FormEvent) {
+    e.preventDefault();
+    if (!selectedCustomer?.id) return;
+    const { error } = await supabase
+      .from('customers')
+      .update(editFormData)
+      .eq('id', selectedCustomer.id);
+    if (!error) {
+      setCustomers(prev => prev.map(c => c.id === selectedCustomer.id ? { ...c, ...editFormData } : c));
+      setSelectedCustomer((prev: any) => prev ? { ...prev, ...editFormData } : null);
+      setEditingCustomer(false);
+    } else {
+      alert('Erro ao atualizar: ' + error.message);
     }
   }
 
@@ -252,31 +270,80 @@ export default function CustomersPage() {
                     <>
                       {/* DADOS DO CADASTRO */}
                       <div className="bg-white rounded-xl p-4 border border-gray-100 space-y-2">
-                        <p className="font-bold text-gray-800 text-sm flex items-center gap-1.5">
-                          <User size={16} className="text-blue-600" /> Dados do Cliente
-                        </p>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
-                          <div className="flex items-center gap-2 text-gray-600">
-                            <FileText size={14} className="text-gray-400" />
-                            <span><strong>CPF:</strong> {customer.cpf || '---'}</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-gray-600">
-                            <FileText size={14} className="text-gray-400" />
-                            <span><strong>CNPJ:</strong> {customer.cnpj || '---'}</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-gray-600">
-                            <Phone size={14} className="text-gray-400" />
-                            <span><strong>Tel:</strong> {customer.phone || '---'}</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-gray-600">
-                            <Mail size={14} className="text-gray-400" />
-                            <span><strong>Email:</strong> {customer.email || '---'}</span>
-                          </div>
-                          <div className="flex items-center gap-2 text-gray-600 sm:col-span-2">
-                            <MapPin size={14} className="text-gray-400" />
-                            <span><strong>Endereço:</strong> {customer.address || '---'}</span>
-                          </div>
+                        <div className="flex items-center justify-between">
+                          <p className="font-bold text-gray-800 text-sm flex items-center gap-1.5">
+                            <User size={16} className="text-blue-600" /> Dados do Cliente
+                          </p>
+                          {!editingCustomer ? (
+                            <button onClick={() => {
+                              setEditFormData({ name: customer.name, phone: customer.phone || '', email: customer.email || '', cpf: customer.cpf || '', cnpj: customer.cnpj || '', address: customer.address || '' });
+                              setEditingCustomer(true);
+                            }} className="text-blue-600 hover:text-blue-800 p-1 rounded-lg hover:bg-blue-50 transition-colors">
+                              <Pencil size={16} />
+                            </button>
+                          ) : (
+                            <button onClick={() => setEditingCustomer(false)} className="text-gray-400 hover:text-gray-600 text-xs font-medium">
+                              Cancelar
+                            </button>
+                          )}
                         </div>
+
+                        {editingCustomer ? (
+                          <form onSubmit={handleUpdateCustomer} className="space-y-3">
+                            <div>
+                              <label className="block text-xs font-medium text-gray-700 mb-1">Nome</label>
+                              <input type="text" required className="w-full p-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-gray-950 text-sm" value={editFormData.name} onChange={(e) => setEditFormData({...editFormData, name: e.target.value})} />
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              <div>
+                                <label className="block text-xs font-medium text-gray-700 mb-1">Telefone</label>
+                                <input type="text" className="w-full p-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-gray-950 text-sm" value={editFormData.phone} onChange={(e) => setEditFormData({...editFormData, phone: e.target.value})} />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-medium text-gray-700 mb-1">Email</label>
+                                <input type="email" className="w-full p-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-gray-950 text-sm" value={editFormData.email} onChange={(e) => setEditFormData({...editFormData, email: e.target.value})} />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-medium text-gray-700 mb-1">CPF</label>
+                                <input type="text" className="w-full p-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-gray-950 text-sm" value={editFormData.cpf} onChange={(e) => setEditFormData({...editFormData, cpf: e.target.value})} />
+                              </div>
+                              <div>
+                                <label className="block text-xs font-medium text-gray-700 mb-1">CNPJ</label>
+                                <input type="text" className="w-full p-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-gray-950 text-sm" value={editFormData.cnpj} onChange={(e) => setEditFormData({...editFormData, cnpj: e.target.value})} />
+                              </div>
+                            </div>
+                            <div>
+                              <label className="block text-xs font-medium text-gray-700 mb-1">Endereço</label>
+                              <input type="text" className="w-full p-2 border border-gray-300 rounded-lg outline-none focus:ring-2 focus:ring-blue-500 text-gray-950 text-sm" value={editFormData.address} onChange={(e) => setEditFormData({...editFormData, address: e.target.value})} />
+                            </div>
+                            <button type="submit" className="w-full py-2 bg-blue-600 text-white font-bold text-sm rounded-lg hover:bg-blue-700 transition-colors">
+                              Salvar Alterações
+                            </button>
+                          </form>
+                        ) : (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm">
+                            <div className="flex items-center gap-2 text-gray-600">
+                              <FileText size={14} className="text-gray-400" />
+                              <span><strong>CPF:</strong> {customer.cpf || '---'}</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-gray-600">
+                              <FileText size={14} className="text-gray-400" />
+                              <span><strong>CNPJ:</strong> {customer.cnpj || '---'}</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-gray-600">
+                              <Phone size={14} className="text-gray-400" />
+                              <span><strong>Tel:</strong> {customer.phone || '---'}</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-gray-600">
+                              <Mail size={14} className="text-gray-400" />
+                              <span><strong>Email:</strong> {customer.email || '---'}</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-gray-600 sm:col-span-2">
+                              <MapPin size={14} className="text-gray-400" />
+                              <span><strong>Endereço:</strong> {customer.address || '---'}</span>
+                            </div>
+                          </div>
+                        )}
                       </div>
 
                       {/* RESUMO FINANCEIRO - CARDS CLICÁVEIS */}
