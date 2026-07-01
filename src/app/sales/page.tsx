@@ -100,6 +100,10 @@ export default function SalesPage() {
     notes: ''
   });
 
+  // Opções de venda
+  const [geraOS, setGeraOS] = useState(true);
+  const [firstDueDate, setFirstDueDate] = useState(getLocalDate(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)));
+
   // Dados de Pagamento / Financeiro
   const [payment, setPayment] = useState({
     method: 'Pix', // Pix, Cartao_Credito, Cartao_Debito, Dinheiro, Boleto
@@ -148,88 +152,54 @@ export default function SalesPage() {
     setLoading(true);
 
     try {
-      // --- VALIDAÇÃO DE SANIDADE (SANE CHECK) ---
-      const warnings: string[] = [];
-      
-      // Validação de Esférico/Cilíndrico extremos (> |10| ou |6|)
-      const valuesToCheck = [
-        { name: 'Esférico OD', val: prescription.od_sphere, limit: 10 },
-        { name: 'Cilíndrico OD', val: prescription.od_cylinder, limit: 6 },
-        { name: 'Esférico OE', val: prescription.oe_sphere, limit: 10 },
-        { name: 'Cilíndrico OE', val: prescription.oe_cylinder, limit: 6 },
-        { name: 'Adição', val: prescription.addition, limit: 4 },
-      ];
+      const hasPrescriptionData = Object.values(prescription).some(val => val !== '');
 
-      valuesToCheck.forEach(item => {
-        const num = Math.abs(parseFloat(item.val) || 0);
-        if (num > item.limit) {
-          warnings.push(`O valor de ${item.name} (${item.val}) está muito alto. Verifique se está correto.`);
-        }
-      });
-
-      // Validação de Eixo (0-180)
-      const axisOD = parseInt(prescription.od_axis);
-      const axisOE = parseInt(prescription.oe_axis);
-      if (isNaN(axisOD) || axisOD < 0 || axisOD > 180) warnings.push('O Eixo OD deve estar entre 0 e 180.');
-      if (isNaN(axisOE) || axisOE < 0 || axisOE > 180) warnings.push('O Eixo OE deve estar entre 0 e 180.');
-
-      // Validação de DP (40-80)
-      const dp = parseFloat(prescription.dp);
-      if (!isNaN(dp) && (dp < 40 || dp > 80)) {
-        warnings.push('A Distância Pupilar (DP) parece incomum (fora de 40-80mm).');
-      }
-
-      if (warnings.length > 0) {
-        const confirmed = window.confirm(
-          `Atenção: Foram encontrados valores incomuns:\n\n${warnings.join('\n')}\n\nDeseja continuar com a venda mesmo assim?`
-        );
-        if (!confirmed) {
-          setLoading(false);
-          return;
+      // --- VALIDAÇÃO DE SANIDADE (só se informou receita) ---
+      if (hasPrescriptionData) {
+        const warnings: string[] = [];
+        const valuesToCheck = [
+          { name: 'Esférico OD', val: prescription.od_sphere, limit: 10 },
+          { name: 'Cilíndrico OD', val: prescription.od_cylinder, limit: 6 },
+          { name: 'Esférico OE', val: prescription.oe_sphere, limit: 10 },
+          { name: 'Cilíndrico OE', val: prescription.oe_cylinder, limit: 6 },
+          { name: 'Adição', val: prescription.addition, limit: 4 },
+        ];
+        valuesToCheck.forEach(item => {
+          const num = Math.abs(parseFloat(item.val) || 0);
+          if (num > item.limit) warnings.push(`O valor de ${item.name} (${item.val}) está muito alto. Verifique se está correto.`);
+        });
+        const axisOD = parseInt(prescription.od_axis);
+        const axisOE = parseInt(prescription.oe_axis);
+        if (isNaN(axisOD) || axisOD < 0 || axisOD > 180) warnings.push('O Eixo OD deve estar entre 0 e 180.');
+        if (isNaN(axisOE) || axisOE < 0 || axisOE > 180) warnings.push('O Eixo OE deve estar entre 0 e 180.');
+        const dp = parseFloat(prescription.dp);
+        if (!isNaN(dp) && (dp < 40 || dp > 80)) warnings.push('A Distância Pupilar (DP) parece incomum (fora de 40-80mm).');
+        if (warnings.length > 0) {
+          const confirmed = window.confirm(`Atenção: Foram encontrados valores incomuns:\n\n${warnings.join('\n')}\n\nDeseja continuar com a venda mesmo assim?`);
+          if (!confirmed) { setLoading(false); return; }
         }
       }
       // --- FIM DA VALIDAÇÃO ---
 
-      // 1. Obter o shop_id
       const { data: profile, error: profileErr } = await supabase
-        .from('profiles')
-        .select('shop_id')
-        .single();
-
-      if (profileErr || !profile?.shop_id) {
-        throw new Error('Você não está vinculado a nenhuma ótica.');
-      }
-
+        .from('profiles').select('shop_id').single();
+      if (profileErr || !profile?.shop_id) throw new Error('Você não está vinculado a nenhuma ótica.');
       const shopId = profile.shop_id;
       let finalCustomerId = selectedCustomerId;
 
-      // 2. Cadastrar novo cliente, se aplicável
       if (isNewCustomer) {
         if (!newCustomer.name) throw new Error('O nome do cliente é obrigatório.');
-        
         const { data: customerData, error: custErr } = await supabase
-          .from('customers')
-          .insert([{
-            ...newCustomer,
-            shop_id: shopId
-          }])
-          .select()
-          .single();
-
+          .from('customers').insert([{ ...newCustomer, shop_id: shopId }]).select().single();
         if (custErr) throw custErr;
         finalCustomerId = customerData.id;
       }
-
       if (!finalCustomerId) throw new Error('Selecione ou cadastre um cliente.');
 
-      // 3. Cadastrar a Receita (Prescription), se algum dado foi preenchido
-      const hasPrescriptionData = Object.values(prescription).some(val => val !== '');
       let finalPrescriptionId = null;
-
       if (hasPrescriptionData) {
         const parsedPrescription = {
-          customer_id: finalCustomerId,
-          shop_id: shopId,
+          customer_id: finalCustomerId, shop_id: shopId,
           oe_sphere: prescription.oe_sphere ? parseFloat(prescription.oe_sphere) : null,
           oe_cylinder: prescription.oe_cylinder ? parseFloat(prescription.oe_cylinder) : null,
           oe_axis: prescription.oe_axis ? parseInt(prescription.oe_axis) : null,
@@ -240,110 +210,102 @@ export default function SalesPage() {
           dp: prescription.dp ? parseFloat(prescription.dp) : null,
           notes: prescription.notes || null
         };
-
         const { data: prescData, error: prescErr } = await supabase
-          .from('prescriptions')
-          .insert([parsedPrescription])
-          .select()
-          .single();
-
+          .from('prescriptions').insert([parsedPrescription]).select().single();
         if (prescErr) throw prescErr;
         finalPrescriptionId = prescData.id;
       }
 
-      // 4. Cadastrar Ordem de Serviço (O.S.)
       const totalVal = parseFloat(saleDetails.total_value);
       if (isNaN(totalVal)) throw new Error('Insira um valor total válido para a venda.');
 
-      const notesOS = `Armação: ${saleDetails.frame || 'Não informada'}\nLente: ${saleDetails.lenses || 'Não informada'}\nObservações: ${saleDetails.notes || 'Nenhuma'}`;
+      // 4. Cadastrar Ordem de Serviço (O.S.) — só se geraOS estiver ativado
+      let osData: any = null;
+      if (geraOS) {
+        const notesOS = `Armação: ${saleDetails.frame || 'Não informada'}\nLente: ${saleDetails.lenses || 'Não informada'}\nObservações: ${saleDetails.notes || 'Nenhuma'}`;
+        const { data: osResult, error: osErr } = await supabase
+          .from('service_orders')
+          .insert([{
+            customer_id: finalCustomerId, shop_id: shopId,
+            status: 'In_Laboratory',
+            total_value: totalVal,
+            scheduled_date: saleDetails.scheduled_date,
+            notes: notesOS
+          }])
+          .select('*, customers(name, phone, cpf)')
+          .single();
+        if (osErr) throw osErr;
+        osData = osResult;
+      }
 
-      const { data: osData, error: osErr } = await supabase
-        .from('service_orders')
-        .insert([{
-          customer_id: finalCustomerId,
-          shop_id: shopId,
-          status: 'In_Laboratory', // Direto para o laboratório
-          total_value: totalVal,
-          scheduled_date: saleDetails.scheduled_date,
-          notes: notesOS
-        }])
-        .select('*, customers(name, phone, cpf)')
-        .single();
-
-      if (osErr) throw osErr;
-
-      // 5. Cadastrar lançamentos financeiros no caixa
+      // 5. Cadastrar lançamentos financeiros
       const financialInserts = [];
       const hoje = new Date();
       const hojeStr = getLocalDate(hoje);
       const entrada = Math.min(parseFloat(payment.downPayment) || 0, totalVal);
       const restante = Math.round((totalVal - entrada) * 100) / 100;
       const instCount = Math.max(parseInt(payment.installments) || 0, 0);
-      const isCredit = payment.method === 'Cartao_Credito';
+      const osRef = osData?.id?.slice(0, 8);
+      const descPrefix = osRef ? `Venda O.S. #${osRef}` : 'Venda';
 
       // Entrada (só se > 0)
       if (entrada > 0) {
-        const entryDue = isCredit ? new Date(hoje.getFullYear(), hoje.getMonth() + 1, hoje.getDate()) : hoje;
+        const entryDue = instCount > 0 ? new Date(firstDueDate) : hoje;
         financialInserts.push({
-          shop_id: shopId,
-          type: 'Income',
-          description: `Venda O.S. #${osData.id.slice(0,8)} (Entrada)`,
+          shop_id: shopId, type: 'Income',
+          description: `${descPrefix} (Entrada)`,
           amount: entrada,
           due_date: getLocalDate(entryDue),
           payment_date: payment.status === 'Paid' ? hojeStr : null,
           status: payment.status,
-          order_id: osData.id,
+          order_id: osData?.id || null,
           customer_id: finalCustomerId
         });
       }
 
-      // Parcelas restantes
-      for (let i = 0; i < instCount && restante > 0; i++) {
-        const baseValor = restante / instCount;
-        let valorParcela = Math.floor(baseValor * 100) / 100;
-        if (i === instCount - 1) {
-          valorParcela = Math.round((restante - valorParcela * (instCount - 1)) * 100) / 100;
+      // Parcelas
+      if (instCount > 0 && restante > 0) {
+        const firstDate = new Date(firstDueDate);
+        for (let i = 0; i < instCount; i++) {
+          const baseValor = restante / instCount;
+          let valorParcela = Math.floor(baseValor * 100) / 100;
+          if (i === instCount - 1) valorParcela = Math.round((restante - valorParcela * (instCount - 1)) * 100) / 100;
+          const due = new Date(firstDate);
+          due.setDate(due.getDate() + i * 30);
+          financialInserts.push({
+            shop_id: shopId, type: 'Income',
+            description: `${descPrefix} (Parc. ${i+1}/${instCount})`,
+            amount: valorParcela,
+            due_date: getLocalDate(due),
+            payment_date: null,
+            status: 'Pending',
+            order_id: osData?.id || null,
+            customer_id: finalCustomerId
+          });
         }
-        const mesesOffset = isCredit ? i + 1 : i;
-        const due = new Date(hoje.getFullYear(), hoje.getMonth() + mesesOffset, hoje.getDate());
-        financialInserts.push({
-          shop_id: shopId,
-          type: 'Income',
-          description: `Venda O.S. #${osData.id.slice(0,8)} (Parc. ${i+1}/${instCount})`,
-          amount: valorParcela,
-          due_date: getLocalDate(due),
-          payment_date: null,
-          status: 'Pending',
-          order_id: osData.id,
-          customer_id: finalCustomerId
-        });
       }
 
-      // Se não tem entrada nem parcelas, lança à vista
+      // À vista (sem entrada nem parcelas)
       if (entrada === 0 && instCount === 0) {
         financialInserts.push({
-          shop_id: shopId,
-          type: 'Income',
-          description: `Venda O.S. #${osData.id.slice(0,8)} (À Vista)`,
+          shop_id: shopId, type: 'Income',
+          description: `${descPrefix} (À Vista)`,
           amount: totalVal,
           due_date: hojeStr,
           payment_date: payment.status === 'Paid' ? hojeStr : null,
           status: payment.status,
-          order_id: osData.id,
+          order_id: osData?.id || null,
           customer_id: finalCustomerId
         });
       }
 
-      const { error: finErr } = await supabase
-        .from('financial_records')
-        .insert(financialInserts);
-
+      const { error: finErr } = await supabase.from('financial_records').insert(financialInserts);
       if (finErr) throw finErr;
 
-      // Tudo deu certo! Definimos os dados para exibição do modal de impressão
       const clientName = isNewCustomer ? newCustomer.name : (customers.find(c => c.id === finalCustomerId)?.name || 'Cliente');
       setCreatedOS({
-        id: osData.id,
+        id: osData?.id || null,
+        geraOS,
         clientName,
         phone: isNewCustomer ? newCustomer.phone : (customers.find(c => c.id === finalCustomerId)?.phone || ''),
         cpf: isNewCustomer ? newCustomer.cpf : (customers.find(c => c.id === finalCustomerId)?.cpf || ''),
@@ -383,6 +345,8 @@ export default function SalesPage() {
       notes: ''
     });
     setPayment({ method: 'Pix', downPayment: '', installments: '1', status: 'Paid' });
+    setGeraOS(true);
+    setFirstDueDate(getLocalDate(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)));
   }
 
   const printAreaRef = useRef<HTMLDivElement>(null);
@@ -578,27 +542,41 @@ export default function SalesPage() {
           </div>
         </AccordionSection>
 
-        {/* SEÇÃO 3: DETALHES DE ARMAÇÃO / LENTE / O.S. */}
-        <AccordionSection num={3} title="Armação / Laboratório" done={section3Done} canOpen={section1Done} isOpen={activeSection === 3} onToggle={() => setActiveSection(activeSection === 3 ? 0 : 3)} summary={section3Done ? formatCurrency(parseFloat(saleDetails.total_value || '0')) : ''}>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Modelo de Armação</label>
-              <input type="text" placeholder="Ex: Ray-Ban Aviador Preto" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={saleDetails.frame} onChange={(e) => setSaleDetails({...saleDetails, frame: e.target.value})} />
+        {/* SEÇÃO 3: DETALHES DA VENDA */}
+        <AccordionSection num={3} title="Produto / Valor" done={section3Done} canOpen={section1Done} isOpen={activeSection === 3} onToggle={() => setActiveSection(activeSection === 3 ? 0 : 3)} summary={section3Done ? formatCurrency(parseFloat(saleDetails.total_value || '0')) : ''}>
+          <label className="flex items-center gap-2 mb-4 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={geraOS}
+              onChange={(e) => setGeraOS(e.target.checked)}
+              className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+            />
+            <span className="text-sm font-medium text-gray-700">Gerar Ordem de Serviço (Laboratório)</span>
+          </label>
+
+          {geraOS && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Modelo de Armação</label>
+                <input type="text" placeholder="Ex: Ray-Ban Aviador Preto" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={saleDetails.frame} onChange={(e) => setSaleDetails({...saleDetails, frame: e.target.value})} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Modelo / Grau da Lente</label>
+                <input type="text" placeholder="Ex: Varilux Crizal Sapphire" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={saleDetails.lenses} onChange={(e) => setSaleDetails({...saleDetails, lenses: e.target.value})} />
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Modelo / Grau da Lente</label>
-              <input type="text" placeholder="Ex: Varilux Crizal Sapphire" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={saleDetails.lenses} onChange={(e) => setSaleDetails({...saleDetails, lenses: e.target.value})} />
-            </div>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Valor Total da Venda</label>
-              <input type="number" step="0.01" required placeholder="R$ 0.00" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 font-bold focus:ring-2 focus:ring-blue-500 outline-none" value={saleDetails.total_value} onChange={(e) => setSaleDetails({...saleDetails, total_value: e.target.value})} />
-            </div>
-            <div>
+          )}
+
+          {geraOS && (
+            <div className="mt-3 mb-3">
               <label className="block text-sm font-medium text-gray-700 mb-1">Prazo de Entrega</label>
               <input type="date" required className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={saleDetails.scheduled_date} onChange={(e) => setSaleDetails({...saleDetails, scheduled_date: e.target.value})} />
             </div>
+          )}
+
+          <div className="mt-3">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Valor Total da Venda</label>
+            <input type="number" step="0.01" required placeholder="R$ 0.00" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 font-bold focus:ring-2 focus:ring-blue-500 outline-none" value={saleDetails.total_value} onChange={(e) => setSaleDetails({...saleDetails, total_value: e.target.value})} />
           </div>
           <div className="mt-3">
             <label className="block text-sm font-medium text-gray-700 mb-1">Notas adicionais</label>
@@ -630,7 +608,12 @@ export default function SalesPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Parcelas Restantes</label>
-              <select className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={payment.installments} onChange={(e) => setPayment({...payment, installments: e.target.value})}>
+              <select className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={payment.installments} onChange={(e) => {
+                setPayment({...payment, installments: e.target.value});
+                if (parseInt(e.target.value) > 0) {
+                  setFirstDueDate(getLocalDate(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)));
+                }
+              }}>
                 <option value="0">0x (Só Entrada)</option>
                 {[...Array(12)].map((_, i) => (
                   <option key={i+1} value={i+1}>{i+1}x</option>
@@ -646,6 +629,19 @@ export default function SalesPage() {
             </div>
           </div>
 
+          {/* Data do primeiro vencimento das parcelas */}
+          {parseInt(payment.installments) > 0 && (
+            <div className="mt-3">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Data do 1º Vencimento</label>
+              <input type="date" required
+                className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none"
+                value={firstDueDate}
+                onChange={(e) => setFirstDueDate(e.target.value)}
+              />
+              <p className="text-[11px] text-gray-400 mt-1">As demais parcelas vencerão a cada 30 dias.</p>
+            </div>
+          )}
+
           <button 
             type="submit" 
             disabled={loading}
@@ -654,14 +650,14 @@ export default function SalesPage() {
             {loading ? (
               <><Loader2 className="animate-spin" size={20} /> Salvando tudo...</>
             ) : (
-              'Finalizar Venda & Gerar O.S.'
+              geraOS ? 'Finalizar Venda & Gerar O.S.' : 'Finalizar Venda'
             )}
           </button>
         </AccordionSection>
 
       </form>
 
-      {/* MODAL DE SUCESSO / IMPRESSÃO DA O.S. DO LABORATÓRIO */}
+      {/* MODAL DE SUCESSO / IMPRESSÃO */}
       {showPrintModal && createdOS && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 overflow-y-auto">
           <div className="bg-white rounded-3xl p-6 w-full max-w-2xl shadow-2xl space-y-6">
@@ -670,93 +666,94 @@ export default function SalesPage() {
                 <Check size={28} />
               </div>
               <h2 className="text-2xl font-bold text-gray-900">Venda Salva com Sucesso!</h2>
-              <p className="text-gray-500 text-sm mt-1">A O.S. já foi criada e lançada no módulo do laboratório e financeiro.</p>
+              <p className="text-gray-500 text-sm mt-1">
+                {createdOS.geraOS
+                  ? 'A O.S. foi criada e os lançamentos financeiros foram registrados.'
+                  : 'Os lançamentos financeiros foram registrados.'}
+              </p>
             </div>
 
-            {/* ÁREA DE IMPRESSÃO DA O.S. */}
-            <div 
-              ref={printAreaRef}
-              className="border-2 border-dashed border-gray-200 p-6 rounded-2xl bg-gray-50 text-black font-mono text-sm max-h-96 overflow-y-auto"
-            >
-              <div className="text-center border-b pb-4 mb-4">
-                <h3 className="font-bold text-lg uppercase">ORDEM DE SERVIÇO - LABORATÓRIO</h3>
-                <p className="text-xs">Identificador: #{createdOS.id.slice(0,8)}</p>
-                <p className="text-xs">Data da Venda: {new Date().toLocaleDateString('pt-BR')}</p>
-                <p className="font-bold text-xs mt-2 text-red-600">PREVISÃO DE ENTREGA: {new Date(createdOS.scheduled_date).toLocaleDateString('pt-BR')}</p>
-              </div>
-
-              {/* DADOS DO CLIENTE */}
-              <div className="space-y-1 mb-4 pb-4 border-b">
-                <p className="font-bold text-xs uppercase text-gray-500">Dados do Cliente</p>
-                <p><strong>Nome:</strong> {createdOS.clientName}</p>
-                {createdOS.phone && <p><strong>WhatsApp:</strong> {createdOS.phone}</p>}
-                {createdOS.cpf && <p><strong>CPF:</strong> {createdOS.cpf}</p>}
-              </div>
-
-              {/* RECEITA / GRAUS */}
-              {createdOS.prescription && (
-                <div className="space-y-2 mb-4 pb-4 border-b">
-                  <p className="font-bold text-xs uppercase text-gray-500">Prescrição Óptica</p>
-                  <table className="w-full text-left text-xs border-collapse">
-                    <thead>
-                      <tr className="border-b">
-                        <th className="py-1">Olho</th>
-                        <th className="py-1">Esférico</th>
-                        <th className="py-1">Cilíndrico</th>
-                        <th className="py-1">Eixo</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr className="border-b">
-                        <td className="py-1 font-bold">OD</td>
-                        <td className="py-1">{createdOS.prescription.od_sphere || '0.00'}</td>
-                        <td className="py-1">{createdOS.prescription.od_cylinder || '0.00'}</td>
-                        <td className="py-1">{createdOS.prescription.od_axis || '0'}°</td>
-                      </tr>
-                      <tr>
-                        <td className="py-1 font-bold">OE</td>
-                        <td className="py-1">{createdOS.prescription.oe_sphere || '0.00'}</td>
-                        <td className="py-1">{createdOS.prescription.oe_cylinder || '0.00'}</td>
-                        <td className="py-1">{createdOS.prescription.oe_axis || '0'}°</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                  <div className="grid grid-cols-2 gap-4 text-xs pt-2">
-                    {createdOS.prescription.addition && <p><strong>Adição:</strong> {createdOS.prescription.addition}</p>}
-                    {createdOS.prescription.dp && <p><strong>D.P.:</strong> {createdOS.prescription.dp} mm</p>}
-                  </div>
+            {createdOS.geraOS ? (
+              <>
+              {/* ÁREA DE IMPRESSÃO DA O.S. */}
+              <div
+                ref={printAreaRef}
+                className="border-2 border-dashed border-gray-200 p-6 rounded-2xl bg-gray-50 text-black font-mono text-sm max-h-96 overflow-y-auto"
+              >
+                <div className="text-center border-b pb-4 mb-4">
+                  <h3 className="font-bold text-lg uppercase">ORDEM DE SERVIÇO - LABORATÓRIO</h3>
+                  <p className="text-xs">Identificador: #{createdOS.id?.slice(0,8)}</p>
+                  <p className="text-xs">Data da Venda: {new Date().toLocaleDateString('pt-BR')}</p>
+                  <p className="font-bold text-xs mt-2 text-red-600">PREVISÃO DE ENTREGA: {new Date(createdOS.scheduled_date).toLocaleDateString('pt-BR')}</p>
                 </div>
-              )}
-
-              {/* ESPECIFICAÇÃO DE PRODUTOS */}
-              <div className="space-y-1 mb-4">
-                <p className="font-bold text-xs uppercase text-gray-500">Especificações Físicas</p>
-                <p><strong>Armação:</strong> {createdOS.frame || 'Armação Própria'}</p>
-                <p><strong>Lentes:</strong> {createdOS.lenses || 'Lentes de Estoque'}</p>
-                {createdOS.notes && <p><strong>Obs:</strong> {createdOS.notes}</p>}
+                <div className="space-y-1 mb-4 pb-4 border-b">
+                  <p className="font-bold text-xs uppercase text-gray-500">Dados do Cliente</p>
+                  <p><strong>Nome:</strong> {createdOS.clientName}</p>
+                  {createdOS.phone && <p><strong>WhatsApp:</strong> {createdOS.phone}</p>}
+                  {createdOS.cpf && <p><strong>CPF:</strong> {createdOS.cpf}</p>}
+                </div>
+                {createdOS.prescription && (
+                  <div className="space-y-2 mb-4 pb-4 border-b">
+                    <p className="font-bold text-xs uppercase text-gray-500">Prescrição Óptica</p>
+                    <table className="w-full text-left text-xs border-collapse">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="py-1">Olho</th>
+                          <th className="py-1">Esférico</th>
+                          <th className="py-1">Cilíndrico</th>
+                          <th className="py-1">Eixo</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr className="border-b">
+                          <td className="py-1 font-bold">OD</td>
+                          <td className="py-1">{createdOS.prescription.od_sphere || '0.00'}</td>
+                          <td className="py-1">{createdOS.prescription.od_cylinder || '0.00'}</td>
+                          <td className="py-1">{createdOS.prescription.od_axis || '0'}°</td>
+                        </tr>
+                        <tr>
+                          <td className="py-1 font-bold">OE</td>
+                          <td className="py-1">{createdOS.prescription.oe_sphere || '0.00'}</td>
+                          <td className="py-1">{createdOS.prescription.oe_cylinder || '0.00'}</td>
+                          <td className="py-1">{createdOS.prescription.oe_axis || '0'}°</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                    <div className="grid grid-cols-2 gap-4 text-xs pt-2">
+                      {createdOS.prescription.addition && <p><strong>Adição:</strong> {createdOS.prescription.addition}</p>}
+                      {createdOS.prescription.dp && <p><strong>D.P.:</strong> {createdOS.prescription.dp} mm</p>}
+                    </div>
+                  </div>
+                )}
+                <div className="space-y-1 mb-4">
+                  <p className="font-bold text-xs uppercase text-gray-500">Especificações Físicas</p>
+                  <p><strong>Armação:</strong> {createdOS.frame || 'Armação Própria'}</p>
+                  <p><strong>Lentes:</strong> {createdOS.lenses || 'Lentes de Estoque'}</p>
+                  {createdOS.notes && <p><strong>Obs:</strong> {createdOS.notes}</p>}
+                </div>
+                <div className="text-center text-xs mt-6 border-t pt-4 text-gray-500 space-y-0.5">
+                  <p className="font-bold text-black">{companyInfo.nomeFantasia}</p>
+                  <p>{companyInfo.razaoSocial} | CNPJ: {companyInfo.cnpj}</p>
+                  <p className="mt-1">AppÓtica - Gestão na palma da mão.</p>
+                </div>
               </div>
 
-              <div className="text-center text-xs mt-6 border-t pt-4 text-gray-500 space-y-0.5">
-                <p className="font-bold text-black">{companyInfo.nomeFantasia}</p>
-                <p>{companyInfo.razaoSocial} | CNPJ: {companyInfo.cnpj}</p>
-                <p className="mt-1">AppÓtica - Gestão na palma da mão.</p>
+              <div className="flex gap-3">
+                <button onClick={() => setShowPrintModal(false)} className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl transition-colors">
+                  Fechar Painel
+                </button>
+                <button onClick={handlePrint} className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-all shadow-lg flex items-center justify-center gap-2">
+                  <Printer size={18} /> Imprimir O.S. (Lab)
+                </button>
               </div>
-            </div>
-
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowPrintModal(false)}
-                className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl transition-colors"
-              >
-                Fechar Painel
-              </button>
-              <button
-                onClick={handlePrint}
-                className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-all shadow-lg flex items-center justify-center gap-2"
-              >
-                <Printer size={18} /> Imprimir O.S. (Lab)
-              </button>
-            </div>
+              </>
+            ) : (
+              <div className="flex gap-3">
+                <button onClick={() => { setShowPrintModal(false); window.location.reload(); }} className="flex-1 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-colors">
+                  Nova Venda
+                </button>
+              </div>
+            )}
           </div>
         </div>
       )}
