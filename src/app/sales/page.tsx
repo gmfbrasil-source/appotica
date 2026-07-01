@@ -696,7 +696,8 @@ export default function SalesPage() {
 
       {/* MODAL DE SUCESSO / IMPRESSÃO */}
       {showPrintModal && createdOS && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50 overflow-y-auto">
+        <div className="fixed inset-0 bg-black/60 z-50 overflow-y-auto">
+          <div className="flex items-start justify-center min-h-full p-4">
           <div className="bg-white rounded-3xl p-6 w-full max-w-2xl shadow-2xl space-y-6">
             <div className="text-center">
               <div className="bg-green-100 w-12 h-12 rounded-full flex items-center justify-center text-green-600 mx-auto mb-3">
@@ -869,6 +870,7 @@ export default function SalesPage() {
                 Nova Venda
               </button>
             </div>
+          </div>
           </div>
         </div>
       )}
