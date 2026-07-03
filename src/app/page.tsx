@@ -8,13 +8,16 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { formatCurrency } from '@/lib/format';
 
 export default function Dashboard() {
-  const [stats, setStats] = useState({
-    customers: 0,
-    activeOS: 0,
-    pendingIncome: 0,
-    pendingExpense: 0,
-    monthIncome: 0,
-  });
+   const [stats, setStats] = useState({
+     customers: 0,
+     activeOS: 0,
+     pendingIncome: 0,
+     pendingExpense: 0,
+     monthIncome: 0,
+     overdueIncome: 0,
+     overdueExpense: 0,
+   });
+
   const [recentOS, setRecentOS] = useState<any[]>([]);
   const [chartData, setChartData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -38,20 +41,28 @@ export default function Dashboard() {
         supabase.from('service_orders').select('*, customers(name)').eq('shop_id', profile.shop_id).order('created_at', { ascending: false }).limit(5),
       ]);
 
-      const finArr = finData || [];
-      const pendingIncome = finArr.filter((r: any) => r.status === 'Pending' && r.type === 'Income').reduce((acc: number, r: any) => acc + r.amount, 0);
-      const pendingExpense = finArr.filter((r: any) => r.status === 'Pending' && r.type === 'Expense').reduce((acc: number, r: any) => acc + r.amount, 0);
-      const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
-      const monthIncome = finArr.filter((r: any) => r.status === 'Paid' && r.type === 'Income' && r.payment_date && new Date(r.payment_date) >= monthStart).reduce((acc: number, r: any) => acc + r.amount, 0);
+       const finArr = finData || [];
+       const todayStr = new Date().toISOString().split('T')[0];
+       const pendingIncome = finArr.filter((r: any) => r.status === 'Pending' && r.type === 'Income').reduce((acc: number, r: any) => acc + r.amount, 0);
+       const pendingExpense = finArr.filter((r: any) => r.status === 'Pending' && r.type === 'Expense').reduce((acc: number, r: any) => acc + r.amount, 0);
+       
+       const overdueIncome = finArr.filter((r: any) => r.status === 'Pending' && r.type === 'Income' && r.due_date < todayStr).reduce((acc: number, r: any) => acc + r.amount, 0);
+       const overdueExpense = finArr.filter((r: any) => r.status === 'Pending' && r.type === 'Expense' && r.due_date < todayStr).reduce((acc: number, r: any) => acc + r.amount, 0);
 
-      setStats({
-        customers: custCount || 0,
-        activeOS: osCount || 0,
-        pendingIncome,
-        pendingExpense,
-        monthIncome,
-      });
-      setRecentOS(osData || []);
+       const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
+       const monthIncome = finArr.filter((r: any) => r.status === 'Paid' && r.type === 'Income' && r.payment_date && new Date(r.payment_date) >= monthStart).reduce((acc: number, r: any) => acc + r.amount, 0);
+ 
+       setStats({
+         customers: custCount || 0,
+         activeOS: osCount || 0,
+         pendingIncome,
+         pendingExpense,
+         monthIncome,
+         overdueIncome,
+         overdueExpense,
+       });
+       setRecentOS(osData || []);
+
 
       // Chart: últimos 6 meses
       const months: any[] = [];
