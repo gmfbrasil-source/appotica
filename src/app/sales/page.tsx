@@ -94,6 +94,7 @@ export default function SalesPage() {
 
   // Detalhes da Venda e O.S.
   const [saleDetails, setSaleDetails] = useState({
+    saleDate: getLocalDate(new Date()),
     frame: '',
     lenses: '',
     total_value: '',
@@ -246,64 +247,65 @@ export default function SalesPage() {
 
       // 5. Cadastrar lançamentos financeiros
       const financialInserts = [];
-      const hoje = new Date();
-      const hojeStr = getLocalDate(hoje);
-      const entrada = Math.min(parseFloat(payment.downPayment) || 0, totalVal);
-      const restante = Math.round((totalVal - entrada) * 100) / 100;
-      const instCount = Math.max(parseInt(payment.installments) || 0, 0);
-      const osRef = osData?.id?.slice(0, 8);
-      const descPrefix = osRef ? `Venda O.S. #${osRef}` : 'Venda';
+       const hoje = new Date(saleDetails.saleDate);
+       const hojeStr = getLocalDate(hoje);
+       const entrada = Math.min(parseFloat(payment.downPayment) || 0, totalVal);
+       const restante = Math.round((totalVal - entrada) * 100) / 100;
+       const instCount = Math.max(parseInt(payment.installments) || 0, 0);
+       const osRef = osData?.id?.slice(0, 8);
+       const descPrefix = osRef ? `Venda O.S. #${osRef}` : 'Venda';
+ 
+       // Entrada (só se > 0)
+       if (entrada > 0) {
+         const entryDue = instCount > 0 ? new Date(firstDueDate) : hoje;
+         financialInserts.push({
+           shop_id: shopId, type: 'Income',
+           description: `${descPrefix} (Entrada)`,
+           amount: entrada,
+           due_date: getLocalDate(entryDue),
+           payment_date: payment.status === 'Paid' ? hojeStr : null,
+           status: payment.status,
+           order_id: osData?.id || null,
+           customer_id: finalCustomerId
+         });
+       }
+ 
+       // Parcelas
+       if (instCount > 0 && restante > 0) {
+         const firstDate = new Date(firstDueDate);
+         for (let i = 0; i < instCount; i++) {
+           const baseValor = restante / instCount;
+           let valorParcela = Math.floor(baseValor * 100) / 100;
+           if (i === instCount - 1) valorParcela = Math.round((restante - valorParcela * (instCount - 1)) * 100) / 100;
+           const due = new Date(firstDate);
+           due.setDate(due.getDate() + i * 30);
+           financialInserts.push({
+             shop_id: shopId, type: 'Income',
+             description: `${descPrefix} (Parc. ${i+1}/${instCount})`,
+             amount: valorParcela,
+             due_date: getLocalDate(due),
+             payment_date: null,
+             status: 'Pending',
+             order_id: osData?.id || null,
+             customer_id: finalCustomerId
+           });
+         }
+       }
+ 
+       // À vista (sem entrada nem parcelas)
+       if (entrada === 0 && instCount === 0) {
+         financialInserts.push({
+           shop_id: shopId, type: 'Income',
+           description: `${descPrefix} (À Vista)`,
+           amount: totalVal,
+           due_date: hojeStr,
+           payment_date: payment.status === 'Paid' ? hojeStr : null,
+           status: payment.status,
+           order_id: osData?.id || null,
+           customer_id: finalCustomerId
+         });
+       }
 
-      // Entrada (só se > 0)
-      if (entrada > 0) {
-        const entryDue = instCount > 0 ? new Date(firstDueDate) : hoje;
-        financialInserts.push({
-          shop_id: shopId, type: 'Income',
-          description: `${descPrefix} (Entrada)`,
-          amount: entrada,
-          due_date: getLocalDate(entryDue),
-          payment_date: payment.status === 'Paid' ? hojeStr : null,
-          status: payment.status,
-          order_id: osData?.id || null,
-          customer_id: finalCustomerId
-        });
-      }
-
-      // Parcelas
-      if (instCount > 0 && restante > 0) {
-        const firstDate = new Date(firstDueDate);
-        for (let i = 0; i < instCount; i++) {
-          const baseValor = restante / instCount;
-          let valorParcela = Math.floor(baseValor * 100) / 100;
-          if (i === instCount - 1) valorParcela = Math.round((restante - valorParcela * (instCount - 1)) * 100) / 100;
-          const due = new Date(firstDate);
-          due.setDate(due.getDate() + i * 30);
-          financialInserts.push({
-            shop_id: shopId, type: 'Income',
-            description: `${descPrefix} (Parc. ${i+1}/${instCount})`,
-            amount: valorParcela,
-            due_date: getLocalDate(due),
-            payment_date: null,
-            status: 'Pending',
-            order_id: osData?.id || null,
-            customer_id: finalCustomerId
-          });
-        }
-      }
-
-      // À vista (sem entrada nem parcelas)
-      if (entrada === 0 && instCount === 0) {
-        financialInserts.push({
-          shop_id: shopId, type: 'Income',
-          description: `${descPrefix} (À Vista)`,
-          amount: totalVal,
-          due_date: hojeStr,
-          payment_date: payment.status === 'Paid' ? hojeStr : null,
-          status: payment.status,
-          order_id: osData?.id || null,
-          customer_id: finalCustomerId
-        });
-      }
 
       const { error: finErr } = await supabase.from('financial_records').insert(financialInserts);
       if (finErr) throw finErr;
@@ -365,13 +367,14 @@ export default function SalesPage() {
       od_sphere: '', od_cylinder: '', od_axis: '',
       addition: '', dp: '', notes: ''
     });
-    setSaleDetails({
-      frame: '',
-      lenses: '',
-      total_value: '',
-      scheduled_date: getLocalDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)),
-      notes: ''
-    });
+     setSaleDetails({
+       frame: '',
+       lenses: '',
+       total_value: '',
+       scheduled_date: getLocalDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)),
+       notes: '',
+       saleDate: getLocalDate(new Date())
+     });
     setPayment({ method: 'Pix', downPayment: '', installments: '1', status: 'Paid' });
     setIsSunglasses(false);
     setOsNumber('');
@@ -600,9 +603,15 @@ export default function SalesPage() {
           </label>
 
           {geraOS && (
-            <div className="mb-3">
-              <label className="block text-sm font-medium text-gray-700 mb-1">Nº da O.S. (opcional)</label>
-              <input type="text" placeholder="Ex: 001/2026" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={osNumber} onChange={(e) => setOsNumber(e.target.value)} />
+            <div className="space-y-3 mb-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Data da Venda</label>
+                <input type="date" required className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={saleDetails.saleDate} onChange={(e) => setSaleDetails({...saleDetails, saleDate: e.target.value})} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Nº da O.S. (opcional)</label>
+                <input type="text" placeholder="Ex: 001/2026" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={osNumber} onChange={(e) => setOsNumber(e.target.value)} />
+              </div>
             </div>
           )}
 
