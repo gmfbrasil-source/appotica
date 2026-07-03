@@ -530,54 +530,56 @@ export default function SalesPage() {
             />
             <span className="text-sm font-medium text-gray-700">Óculos de Sol (sem grau)</span>
           </label>
-          {!isSunglasses && (<>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-3 bg-gray-50 rounded-2xl border border-gray-100">
-              <div className="space-y-2">
-                <h3 className="font-bold text-xs text-gray-700 border-b pb-1 text-center sm:text-left">Olho Direito (OD)</h3>
-                <div className="grid grid-cols-3 gap-1.5">
-                  <div>
-                    <label className="block text-[10px] font-medium text-gray-500 uppercase">Esférico</label>
-                    <input type="text" placeholder="-2.00" className="w-full p-2 bg-white border border-gray-200 rounded-lg text-sm text-center text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={prescription.od_sphere} onChange={e => setPrescription({...prescription, od_sphere: e.target.value})} />
+          {!isSunglasses && (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-3 bg-gray-50 rounded-2xl border border-gray-100">
+                <div className="space-y-2">
+                  <h3 className="font-bold text-xs text-gray-700 border-b pb-1 text-center sm:text-left">Olho Direito (OD)</h3>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    <div>
+                      <label className="block text-[10px] font-medium text-gray-500 uppercase">Esférico</label>
+                      <input type="text" placeholder="-2.00" className="w-full p-2 bg-white border border-gray-200 rounded-lg text-sm text-center text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={prescription.od_sphere} onChange={e => setPrescription({...prescription, od_sphere: e.target.value})} />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-medium text-gray-500 uppercase">Cilíndrico</label>
+                      <input type="text" placeholder="-0.50" className="w-full p-2 bg-white border border-gray-200 rounded-lg text-sm text-center text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={prescription.od_cylinder} onChange={e => setPrescription({...prescription, od_cylinder: e.target.value})} />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-medium text-gray-500 uppercase">Eixo (°)</label>
+                      <input type="text" placeholder="180" className="w-full p-2 bg-white border border-gray-200 rounded-lg text-sm text-center text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={prescription.od_axis} onChange={e => setPrescription({...prescription, od_axis: e.target.value})} />
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-[10px] font-medium text-gray-500 uppercase">Cilíndrico</label>
-                    <input type="text" placeholder="-0.50" className="w-full p-2 bg-white border border-gray-200 rounded-lg text-sm text-center text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={prescription.od_cylinder} onChange={e => setPrescription({...prescription, od_cylinder: e.target.value})} />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-medium text-gray-500 uppercase">Eixo (°)</label>
-                    <input type="text" placeholder="180" className="w-full p-2 bg-white border border-gray-200 rounded-lg text-sm text-center text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={prescription.od_axis} onChange={e => setPrescription({...prescription, od_axis: e.target.value})} />
+                </div>
+                <div className="space-y-2">
+                  <h3 className="font-bold text-xs text-gray-700 border-b pb-1 text-center sm:text-left">Olho Esquerdo (OE)</h3>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    <div>
+                      <label className="block text-[10px] font-medium text-gray-500 uppercase">Esférico</label>
+                      <input type="text" placeholder="-1.75" className="w-full p-2 bg-white border border-gray-200 rounded-lg text-sm text-center text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={prescription.oe_sphere} onChange={e => setPrescription({...prescription, oe_sphere: e.target.value})} />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-medium text-gray-500 uppercase">Cilíndrico</label>
+                      <input type="text" placeholder="-0.75" className="w-full p-2 bg-white border border-gray-200 rounded-lg text-sm text-center text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={prescription.oe_cylinder} onChange={e => setPrescription({...prescription, oe_cylinder: e.target.value})} />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-medium text-gray-500 uppercase">Eixo (°)</label>
+                      <input type="text" placeholder="90" className="w-full p-2 bg-white border border-gray-200 rounded-lg text-sm text-center text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={prescription.oe_axis} onChange={e => setPrescription({...prescription, oe_axis: e.target.value})} />
+                    </div>
                   </div>
                 </div>
               </div>
-              <div className="space-y-2">
-                <h3 className="font-bold text-xs text-gray-700 border-b pb-1 text-center sm:text-left">Olho Esquerdo (OE)</h3>
-                <div className="grid grid-cols-3 gap-1.5">
-                  <div>
-                    <label className="block text-[10px] font-medium text-gray-500 uppercase">Esférico</label>
-                    <input type="text" placeholder="-1.75" className="w-full p-2 bg-white border border-gray-200 rounded-lg text-sm text-center text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={prescription.oe_sphere} onChange={e => setPrescription({...prescription, oe_sphere: e.target.value})} />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-medium text-gray-500 uppercase">Cilíndrico</label>
-                    <input type="text" placeholder="-0.75" className="w-full p-2 bg-white border border-gray-200 rounded-lg text-sm text-center text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={prescription.oe_cylinder} onChange={e => setPrescription({...prescription, oe_cylinder: e.target.value})} />
-                  </div>
-                  <div>
-                    <label className="block text-[10px] font-medium text-gray-500 uppercase">Eixo (°)</label>
-                    <input type="text" placeholder="90" className="w-full p-2 bg-white border border-gray-200 rounded-lg text-sm text-center text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={prescription.oe_axis} onChange={e => setPrescription({...prescription, oe_axis: e.target.value})} />
-                  </div>
+              <div className="grid grid-cols-2 gap-3 mt-3">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Adição</label>
+                  <input type="text" placeholder="+2.00" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={prescription.addition} onChange={(e) => setPrescription({...prescription, addition: e.target.value})} />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">D.P.</label>
+                  <input type="text" placeholder="62" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={prescription.dp} onChange={(e) => setPrescription({...prescription, dp: e.target.value})} />
                 </div>
               </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3 mt-3">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Adição</label>
-                <input type="text" placeholder="+2.00" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={prescription.addition} onChange={(e) => setPrescription({...prescription, addition: e.target.value})} />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">D.P.</label>
-                <input type="text" placeholder="62" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={prescription.dp} onChange={(e) => setPrescription({...prescription, dp: e.target.value})} />
-              </div>
-            </div>
-          </>)}
+            </>
+          )}
           <div className="flex gap-2 mt-3">
             <button type="button" onClick={() => setActiveSection(3)} className="flex-1 py-2.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors text-sm">
               {section2Done ? 'Próximo' : 'Pular (Sem Grau)'}
