@@ -35,6 +35,7 @@ export default function FinancePage() {
   const [filterDateStart, setFilterDateStart] = useState('');
   const [filterDateEnd, setFilterDateEnd] = useState('');
   const [showReportModal, setShowReportModal] = useState(false);
+  const [relatorioTipo, setRelatorioTipo] = useState<'analitico' | 'sintetico'>('sintetico');
 
   // Estados para o fornecedor (Despesas)
   const [supplierSearch, setSupplierSearch] = useState('');
@@ -228,6 +229,16 @@ export default function FinancePage() {
                       (!filterDateEnd || r.due_date <= filterDateEnd);
     return matchText && matchType && matchStatus && matchDate;
   });
+
+  const filteredIncome = filteredRecords
+    .filter(r => r.type === 'Income')
+    .reduce((acc: number, r: any) => acc + r.amount, 0);
+
+  const filteredExpense = filteredRecords
+    .filter(r => r.type === 'Expense')
+    .reduce((acc: number, r: any) => acc + r.amount, 0);
+
+  const filteredBalance = filteredIncome - filteredExpense;
 
   return (
     <div className="p-6">
@@ -529,6 +540,28 @@ export default function FinancePage() {
         </button>
       </div>
 
+      {/* Saldo baseado nos filtros */}
+      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-4 mb-4 border border-blue-100">
+        <div className="flex items-center justify-between flex-wrap gap-3">
+          <div className="flex gap-5">
+            <div>
+              <p className="text-xs text-green-600 font-medium">Receitas Filtradas</p>
+              <p className="text-lg font-bold text-green-600">{formatCurrency(filteredIncome)}</p>
+            </div>
+            <div>
+              <p className="text-xs text-red-600 font-medium">Despesas Filtradas</p>
+              <p className="text-lg font-bold text-red-600">{formatCurrency(filteredExpense)}</p>
+            </div>
+          </div>
+          <div className="text-right">
+            <p className="text-xs text-blue-600 font-medium uppercase">Saldo dos Filtros</p>
+            <p className={`text-2xl font-black ${filteredBalance >= 0 ? 'text-blue-700' : 'text-red-700'}`}>
+              {filteredBalance >= 0 ? '+' : ''} {formatCurrency(filteredBalance)}
+            </p>
+          </div>
+        </div>
+      </div>
+
       <div className="space-y-3">
         {loading ? (
           <div className="text-center py-10 text-gray-500">Carregando financeiro...</div>
@@ -601,13 +634,13 @@ export default function FinancePage() {
         )}
       </div>
 
-      {/* MODAL DE RELATÓRIO */}
+      {/* MODAL DE RELATÓRIO - CONTAS A PAGAR E A RECEBER */}
       {showReportModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex justify-between items-center mb-6">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto print-content">
+            <div className="flex justify-between items-center mb-6 no-print">
               <h2 className="text-xl font-bold flex items-center gap-2">
-                <FileText size={20} className="text-blue-600" /> Relatório Financeiro
+                <FileText size={20} className="text-blue-600" /> Relatório de Contas a Pagar e a Receber
               </h2>
               <button onClick={() => setShowReportModal(false)} className="text-gray-500 hover:text-gray-700">
                 <X size={20} />
@@ -629,89 +662,197 @@ export default function FinancePage() {
               </div>
             </div>
 
-            {/* Totais do relatório */}
-            <div className="grid sm:grid-cols-2 gap-4 mb-6">
-              <div className="bg-green-50 rounded-xl p-4 border border-green-100">
-                <p className="text-xs font-bold text-green-600 uppercase mb-1">Receitas</p>
-                <p className="text-2xl font-black text-green-700">
-                  {formatCurrency(
-                    filteredRecords
-                      .filter(r => r.type === 'Income' && r.status === 'Paid')
-                      .reduce((acc, r) => acc + r.amount, 0)
-                  )}
-                </p>
-                <p className="text-xs text-green-500 mt-1">
-                  Pendentes: {formatCurrency(
-                    filteredRecords
-                      .filter(r => r.type === 'Income' && r.status === 'Pending')
-                      .reduce((acc, r) => acc + r.amount, 0)
-                  )}
-                </p>
-              </div>
-              <div className="bg-red-50 rounded-xl p-4 border border-red-100">
-                <p className="text-xs font-bold text-red-600 uppercase mb-1">Despesas</p>
-                <p className="text-2xl font-black text-red-700">
-                  {formatCurrency(
-                    filteredRecords
-                      .filter(r => r.type === 'Expense' && r.status === 'Paid')
-                      .reduce((acc, r) => acc + r.amount, 0)
-                  )}
-                </p>
-                <p className="text-xs text-red-500 mt-1">
-                  Pendentes: {formatCurrency(
-                    filteredRecords
-                      .filter(r => r.type === 'Expense' && r.status === 'Pending')
-                      .reduce((acc, r) => acc + r.amount, 0)
-                  )}
-                </p>
-              </div>
+            {/* Abas: Sintético / Analítico */}
+            <div className="flex bg-gray-100 rounded-lg p-0.5 mb-6 no-print w-fit">
+              {(['sintetico', 'analitico'] as const).map((t) => (
+                <button
+                  key={t}
+                  onClick={() => setRelatorioTipo(t)}
+                  className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${
+                    relatorioTipo === t
+                      ? 'bg-white text-gray-800 shadow-sm'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  {t === 'sintetico' ? 'Sintético' : 'Analítico'}
+                </button>
+              ))}
             </div>
 
-            {/* Saldo do período */}
-            {(() => {
-              const incomePaid = filteredRecords.filter(r => r.type === 'Income' && r.status === 'Paid').reduce((acc, r) => acc + r.amount, 0);
-              const expensePaid = filteredRecords.filter(r => r.type === 'Expense' && r.status === 'Paid').reduce((acc, r) => acc + r.amount, 0);
-              const balance = incomePaid - expensePaid;
-              return (
-                <div className={`rounded-xl p-4 mb-6 text-center border ${balance >= 0 ? 'bg-blue-50 border-blue-100' : 'bg-red-50 border-red-100'}`}>
-                  <p className="text-xs font-bold uppercase text-gray-500 mb-1">Saldo do Período (Recebido - Pago)</p>
-                  <p className={`text-3xl font-black ${balance >= 0 ? 'text-blue-700' : 'text-red-700'}`}>
-                    {balance >= 0 ? '+' : ''}{formatCurrency(balance)}
-                  </p>
-                </div>
-              );
-            })()}
-
-            {/* Listagem resumida */}
-            <div className="border-t pt-4">
-              <p className="text-xs font-bold text-gray-500 uppercase mb-3">Lançamentos do Período</p>
-              <div className="space-y-2 max-h-60 overflow-y-auto">
-                {filteredRecords.map((record: any) => (
-                  <div key={record.id} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg text-sm">
-                    <div className="flex items-center gap-2 min-w-0 flex-1">
-                      <span className={`p-1 rounded-full ${record.type === 'Income' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
-                        {record.type === 'Income' ? <ArrowUpCircle size={14} /> : <ArrowDownCircle size={14} />}
-                      </span>
-                      <span className="truncate font-medium text-gray-800">{record.description}</span>
-                      <span className="text-[10px] text-gray-400 flex-shrink-0">
-                        {new Date(record.due_date).toLocaleDateString('pt-BR')}
-                      </span>
-                    </div>
-                    <div className="text-right flex items-center gap-2 flex-shrink-0">
-                      <span className={`font-bold ${record.type === 'Income' ? 'text-green-600' : 'text-red-600'}`}>
-                        {formatCurrency(record.amount)}
-                      </span>
-                      <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${record.status === 'Paid' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'}`}>
-                        {record.status === 'Paid' ? 'Pago' : 'Pend.'}
-                      </span>
+            {/* CONTEÚDO DO RELATÓRIO */}
+            <div id="report-content">
+              {/* VISÃO SINTÉTICA */}
+              {relatorioTipo === 'sintetico' && (
+                <>
+                  {/* Contas a Receber */}
+                  <div className="mb-6">
+                    <h3 className="text-sm font-bold text-green-700 uppercase mb-3 flex items-center gap-2">
+                      <ArrowUpCircle size={16} /> Contas a Receber
+                    </h3>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="bg-green-50 rounded-xl p-4 border border-green-100">
+                        <p className="text-[10px] font-bold text-green-600 uppercase mb-1">A Receber (Pendente)</p>
+                        <p className="text-xl font-black text-green-700">
+                          {formatCurrency(
+                            filteredRecords
+                              .filter(r => r.type === 'Income' && r.status === 'Pending')
+                              .reduce((acc, r) => acc + r.amount, 0)
+                          )}
+                        </p>
+                        <p className="text-[10px] text-green-500 mt-1">
+                          {filteredRecords.filter(r => r.type === 'Income' && r.status === 'Pending').length} parcela(s)
+                        </p>
+                      </div>
+                      <div className="bg-emerald-50 rounded-xl p-4 border border-emerald-100">
+                        <p className="text-[10px] font-bold text-emerald-600 uppercase mb-1">Recebido (Pago)</p>
+                        <p className="text-xl font-black text-emerald-700">
+                          {formatCurrency(
+                            filteredRecords
+                              .filter(r => r.type === 'Income' && r.status === 'Paid')
+                              .reduce((acc, r) => acc + r.amount, 0)
+                          )}
+                        </p>
+                        <p className="text-[10px] text-emerald-500 mt-1">
+                          {filteredRecords.filter(r => r.type === 'Income' && r.status === 'Paid').length} parcela(s)
+                        </p>
+                      </div>
                     </div>
                   </div>
-                ))}
-              </div>
+
+                  {/* Contas a Pagar */}
+                  <div className="mb-6">
+                    <h3 className="text-sm font-bold text-red-700 uppercase mb-3 flex items-center gap-2">
+                      <ArrowDownCircle size={16} /> Contas a Pagar
+                    </h3>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="bg-red-50 rounded-xl p-4 border border-red-100">
+                        <p className="text-[10px] font-bold text-red-600 uppercase mb-1">A Pagar (Pendente)</p>
+                        <p className="text-xl font-black text-red-700">
+                          {formatCurrency(
+                            filteredRecords
+                              .filter(r => r.type === 'Expense' && r.status === 'Pending')
+                              .reduce((acc, r) => acc + r.amount, 0)
+                          )}
+                        </p>
+                        <p className="text-[10px] text-red-500 mt-1">
+                          {filteredRecords.filter(r => r.type === 'Expense' && r.status === 'Pending').length} parcela(s)
+                        </p>
+                      </div>
+                      <div className="bg-rose-50 rounded-xl p-4 border border-rose-100">
+                        <p className="text-[10px] font-bold text-rose-600 uppercase mb-1">Pago</p>
+                        <p className="text-xl font-black text-rose-700">
+                          {formatCurrency(
+                            filteredRecords
+                              .filter(r => r.type === 'Expense' && r.status === 'Paid')
+                              .reduce((acc, r) => acc + r.amount, 0)
+                          )}
+                        </p>
+                        <p className="text-[10px] text-rose-500 mt-1">
+                          {filteredRecords.filter(r => r.type === 'Expense' && r.status === 'Paid').length} parcela(s)
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Saldo do Período */}
+                  {(() => {
+                    const incomePaid = filteredRecords.filter(r => r.type === 'Income' && r.status === 'Paid').reduce((acc, r) => acc + r.amount, 0);
+                    const expensePaid = filteredRecords.filter(r => r.type === 'Expense' && r.status === 'Paid').reduce((acc, r) => acc + r.amount, 0);
+                    const incomePending = filteredRecords.filter(r => r.type === 'Income' && r.status === 'Pending').reduce((acc, r) => acc + r.amount, 0);
+                    const expensePending = filteredRecords.filter(r => r.type === 'Expense' && r.status === 'Pending').reduce((acc, r) => acc + r.amount, 0);
+                    const realizedBalance = incomePaid - expensePaid;
+                    const projectedBalance = (incomePaid + incomePending) - (expensePaid + expensePending);
+                    return (
+                      <div className="border-t pt-4 mb-4">
+                        <p className="text-xs font-bold text-gray-500 uppercase mb-3 text-center">Saldo do Período</p>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className={`rounded-xl p-4 text-center border ${realizedBalance >= 0 ? 'bg-blue-50 border-blue-100' : 'bg-red-50 border-red-100'}`}>
+                            <p className="text-[10px] font-bold uppercase text-gray-500 mb-1">Realizado (Recebido - Pago)</p>
+                            <p className={`text-2xl font-black ${realizedBalance >= 0 ? 'text-blue-700' : 'text-red-700'}`}>
+                              {realizedBalance >= 0 ? '+' : ''}{formatCurrency(realizedBalance)}
+                            </p>
+                          </div>
+                          <div className={`rounded-xl p-4 text-center border ${projectedBalance >= 0 ? 'bg-indigo-50 border-indigo-100' : 'bg-orange-50 border-orange-100'}`}>
+                            <p className="text-[10px] font-bold uppercase text-gray-500 mb-1">Projetado (Todas as contas)</p>
+                            <p className={`text-2xl font-black ${projectedBalance >= 0 ? 'text-indigo-700' : 'text-orange-700'}`}>
+                              {projectedBalance >= 0 ? '+' : ''}{formatCurrency(projectedBalance)}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </>
+              )}
+
+              {/* VISÃO ANALÍTICA */}
+              {relatorioTipo === 'analitico' && (
+                <>
+                  {/* Contas a Receber */}
+                  {filteredRecords.filter(r => r.type === 'Income').length > 0 && (
+                    <div className="mb-6">
+                      <h3 className="text-sm font-bold text-green-700 uppercase mb-3 flex items-center gap-2">
+                        <ArrowUpCircle size={16} /> Contas a Receber
+                      </h3>
+                      <div className="space-y-1 border border-green-100 rounded-xl overflow-hidden">
+                        {filteredRecords.filter(r => r.type === 'Income').map((record: any) => (
+                          <div key={record.id} className="flex items-center justify-between p-3 hover:bg-green-50 text-sm border-b border-green-50 last:border-0">
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-gray-800 truncate">{record.description}</p>
+                              <p className="text-[11px] text-gray-500">
+                                Venc: {new Date(record.due_date).toLocaleDateString('pt-BR')}
+                                {record.customers?.name && ` | ${record.customers.name}`}
+                              </p>
+                            </div>
+                            <div className="text-right flex items-center gap-2 flex-shrink-0 ml-3">
+                              <span className="font-bold text-green-600">{formatCurrency(record.amount)}</span>
+                              <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${record.status === 'Paid' ? 'bg-emerald-100 text-emerald-700' : 'bg-orange-100 text-orange-700'}`}>
+                                {record.status === 'Paid' ? 'Recebido' : 'Pendente'}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Contas a Pagar */}
+                  {filteredRecords.filter(r => r.type === 'Expense').length > 0 && (
+                    <div className="mb-6">
+                      <h3 className="text-sm font-bold text-red-700 uppercase mb-3 flex items-center gap-2">
+                        <ArrowDownCircle size={16} /> Contas a Pagar
+                      </h3>
+                      <div className="space-y-1 border border-red-100 rounded-xl overflow-hidden">
+                        {filteredRecords.filter(r => r.type === 'Expense').map((record: any) => (
+                          <div key={record.id} className="flex items-center justify-between p-3 hover:bg-red-50 text-sm border-b border-red-50 last:border-0">
+                            <div className="flex-1 min-w-0">
+                              <p className="font-semibold text-gray-800 truncate">{record.description}</p>
+                              <p className="text-[11px] text-gray-500">
+                                Venc: {new Date(record.due_date).toLocaleDateString('pt-BR')}
+                                {record.customers?.name && ` | ${record.customers.name}`}
+                              </p>
+                            </div>
+                            <div className="text-right flex items-center gap-2 flex-shrink-0 ml-3">
+                              <span className="font-bold text-red-600">{formatCurrency(record.amount)}</span>
+                              <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${record.status === 'Paid' ? 'bg-rose-100 text-rose-700' : 'bg-orange-100 text-orange-700'}`}>
+                                {record.status === 'Paid' ? 'Pago' : 'Pendente'}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {filteredRecords.length === 0 && (
+                    <p className="text-center py-8 text-gray-500 text-sm">Nenhum lançamento encontrado no período.</p>
+                  )}
+                </>
+              )}
             </div>
 
             {/* Botões */}
-            <div className="flex gap-3 mt-6 pt-4 border-t">
+            <div className="flex gap-3 mt-6 pt-4 border-t no-print">
               <button
                 onClick={() => setShowReportModal(false)}
                 className="flex-1 py-2.5 text-gray-600 font-medium hover:bg-gray-100 rounded-lg transition-colors"
@@ -728,6 +869,30 @@ export default function FinancePage() {
           </div>
         </div>
       )}
+
+      <style jsx>{`
+        @media print {
+          body * {
+            visibility: hidden;
+          }
+          .print-content, .print-content * {
+            visibility: visible;
+          }
+          .print-content {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 100%;
+            padding: 20px;
+            background: white;
+            max-height: none !important;
+            overflow: visible !important;
+          }
+          .no-print {
+            display: none !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }
