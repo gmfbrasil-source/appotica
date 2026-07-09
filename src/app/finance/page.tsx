@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { formatCurrency } from '@/lib/format';
-import { Plus, ArrowUpCircle, ArrowDownCircle, Calendar, Trash2, Search, Check, AlertCircle, CheckCircle } from 'lucide-react';
+import { Plus, ArrowUpCircle, ArrowDownCircle, Calendar, Trash2, Search, Check, AlertCircle, CheckCircle, Printer, X, FileText } from 'lucide-react';
 
 function getLocalDate(date?: Date): string {
   const d = date || new Date();
@@ -30,6 +30,11 @@ export default function FinancePage() {
   // Estados para recorrência
   const [recurrenceEnabled, setRecurrenceEnabled] = useState(false);
   const [recurrenceCount, setRecurrenceCount] = useState(1);
+
+  // Filtros por período e relatório
+  const [filterDateStart, setFilterDateStart] = useState('');
+  const [filterDateEnd, setFilterDateEnd] = useState('');
+  const [showReportModal, setShowReportModal] = useState(false);
 
   // Estados para o fornecedor (Despesas)
   const [supplierSearch, setSupplierSearch] = useState('');
@@ -219,7 +224,9 @@ export default function FinancePage() {
       r.customers?.name?.toLowerCase().includes(searchQuery.toLowerCase());
     const matchType = filterType === 'all' || r.type === filterType;
     const matchStatus = filterStatus === 'all' || r.status === filterStatus;
-    return matchText && matchType && matchStatus;
+    const matchDate = (!filterDateStart || r.due_date >= filterDateStart) &&
+                      (!filterDateEnd || r.due_date <= filterDateEnd);
+    return matchText && matchType && matchStatus && matchDate;
   });
 
   return (
@@ -485,6 +492,43 @@ export default function FinancePage() {
         </div>
       </div>
 
+      {/* Filtro por período */}
+      <div className="flex flex-wrap items-center gap-2 mb-4">
+        <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1.5">
+          <Calendar size={16} className="text-gray-500 ml-1" />
+          <input
+            type="date"
+            value={filterDateStart}
+            onChange={(e) => setFilterDateStart(e.target.value)}
+            className="p-1.5 bg-white border border-gray-200 rounded-lg text-xs text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none"
+            title="Data início"
+          />
+          <span className="text-xs text-gray-500">até</span>
+          <input
+            type="date"
+            value={filterDateEnd}
+            onChange={(e) => setFilterDateEnd(e.target.value)}
+            className="p-1.5 bg-white border border-gray-200 rounded-lg text-xs text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none"
+            title="Data fim"
+          />
+        </div>
+        {(filterDateStart || filterDateEnd) && (
+          <button
+            onClick={() => { setFilterDateStart(''); setFilterDateEnd(''); }}
+            className="text-xs text-blue-600 font-medium hover:underline"
+          >
+            Limpar datas
+          </button>
+        )}
+        <button
+          onClick={() => setShowReportModal(true)}
+          disabled={filteredRecords.length === 0}
+          className="ml-auto flex items-center gap-1.5 px-3 py-2 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <FileText size={14} /> Gerar Relatório
+        </button>
+      </div>
+
       <div className="space-y-3">
         {loading ? (
           <div className="text-center py-10 text-gray-500">Carregando financeiro...</div>
@@ -550,12 +594,140 @@ export default function FinancePage() {
         )}
         {!loading && filteredRecords.length === 0 && (
           <div className="text-center py-10 text-gray-500">
-            {searchQuery || filterType !== 'all' || filterStatus !== 'all'
+            {searchQuery || filterType !== 'all' || filterStatus !== 'all' || filterDateStart || filterDateEnd
               ? 'Nenhum registro encontrado para estes filtros.'
               : 'Nenhum registro financeiro.'}
           </div>
         )}
       </div>
+
+      {/* MODAL DE RELATÓRIO */}
+      {showReportModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-bold flex items-center gap-2">
+                <FileText size={20} className="text-blue-600" /> Relatório Financeiro
+              </h2>
+              <button onClick={() => setShowReportModal(false)} className="text-gray-500 hover:text-gray-700">
+                <X size={20} />
+              </button>
+            </div>
+
+            {/* Cabeçalho do período */}
+            <div className="bg-gray-50 rounded-xl p-4 mb-6 text-sm">
+              <div className="flex justify-between items-center">
+                <div>
+                  <span className="text-gray-500">Período: </span>
+                  <span className="font-bold">
+                    {filterDateStart ? new Date(filterDateStart).toLocaleDateString('pt-BR') : 'Início'} 
+                    {' até '} 
+                    {filterDateEnd ? new Date(filterDateEnd).toLocaleDateString('pt-BR') : 'Hoje'}
+                  </span>
+                </div>
+                <span className="text-xs text-gray-400">{filteredRecords.length} registro(s)</span>
+              </div>
+            </div>
+
+            {/* Totais do relatório */}
+            <div className="grid sm:grid-cols-2 gap-4 mb-6">
+              <div className="bg-green-50 rounded-xl p-4 border border-green-100">
+                <p className="text-xs font-bold text-green-600 uppercase mb-1">Receitas</p>
+                <p className="text-2xl font-black text-green-700">
+                  {formatCurrency(
+                    filteredRecords
+                      .filter(r => r.type === 'Income' && r.status === 'Paid')
+                      .reduce((acc, r) => acc + r.amount, 0)
+                  )}
+                </p>
+                <p className="text-xs text-green-500 mt-1">
+                  Pendentes: {formatCurrency(
+                    filteredRecords
+                      .filter(r => r.type === 'Income' && r.status === 'Pending')
+                      .reduce((acc, r) => acc + r.amount, 0)
+                  )}
+                </p>
+              </div>
+              <div className="bg-red-50 rounded-xl p-4 border border-red-100">
+                <p className="text-xs font-bold text-red-600 uppercase mb-1">Despesas</p>
+                <p className="text-2xl font-black text-red-700">
+                  {formatCurrency(
+                    filteredRecords
+                      .filter(r => r.type === 'Expense' && r.status === 'Paid')
+                      .reduce((acc, r) => acc + r.amount, 0)
+                  )}
+                </p>
+                <p className="text-xs text-red-500 mt-1">
+                  Pendentes: {formatCurrency(
+                    filteredRecords
+                      .filter(r => r.type === 'Expense' && r.status === 'Pending')
+                      .reduce((acc, r) => acc + r.amount, 0)
+                  )}
+                </p>
+              </div>
+            </div>
+
+            {/* Saldo do período */}
+            {(() => {
+              const incomePaid = filteredRecords.filter(r => r.type === 'Income' && r.status === 'Paid').reduce((acc, r) => acc + r.amount, 0);
+              const expensePaid = filteredRecords.filter(r => r.type === 'Expense' && r.status === 'Paid').reduce((acc, r) => acc + r.amount, 0);
+              const balance = incomePaid - expensePaid;
+              return (
+                <div className={`rounded-xl p-4 mb-6 text-center border ${balance >= 0 ? 'bg-blue-50 border-blue-100' : 'bg-red-50 border-red-100'}`}>
+                  <p className="text-xs font-bold uppercase text-gray-500 mb-1">Saldo do Período (Recebido - Pago)</p>
+                  <p className={`text-3xl font-black ${balance >= 0 ? 'text-blue-700' : 'text-red-700'}`}>
+                    {balance >= 0 ? '+' : ''}{formatCurrency(balance)}
+                  </p>
+                </div>
+              );
+            })()}
+
+            {/* Listagem resumida */}
+            <div className="border-t pt-4">
+              <p className="text-xs font-bold text-gray-500 uppercase mb-3">Lançamentos do Período</p>
+              <div className="space-y-2 max-h-60 overflow-y-auto">
+                {filteredRecords.map((record: any) => (
+                  <div key={record.id} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg text-sm">
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                      <span className={`p-1 rounded-full ${record.type === 'Income' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
+                        {record.type === 'Income' ? <ArrowUpCircle size={14} /> : <ArrowDownCircle size={14} />}
+                      </span>
+                      <span className="truncate font-medium text-gray-800">{record.description}</span>
+                      <span className="text-[10px] text-gray-400 flex-shrink-0">
+                        {new Date(record.due_date).toLocaleDateString('pt-BR')}
+                      </span>
+                    </div>
+                    <div className="text-right flex items-center gap-2 flex-shrink-0">
+                      <span className={`font-bold ${record.type === 'Income' ? 'text-green-600' : 'text-red-600'}`}>
+                        {formatCurrency(record.amount)}
+                      </span>
+                      <span className={`text-[10px] font-bold uppercase px-1.5 py-0.5 rounded ${record.status === 'Paid' ? 'bg-blue-100 text-blue-700' : 'bg-orange-100 text-orange-700'}`}>
+                        {record.status === 'Paid' ? 'Pago' : 'Pend.'}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Botões */}
+            <div className="flex gap-3 mt-6 pt-4 border-t">
+              <button
+                onClick={() => setShowReportModal(false)}
+                className="flex-1 py-2.5 text-gray-600 font-medium hover:bg-gray-100 rounded-lg transition-colors"
+              >
+                Fechar
+              </button>
+              <button
+                onClick={() => window.print()}
+                className="flex-1 py-2.5 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+              >
+                <Printer size={16} /> Imprimir Relatório
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
