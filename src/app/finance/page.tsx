@@ -240,6 +240,115 @@ export default function FinancePage() {
 
   const filteredBalance = filteredIncome - filteredExpense;
 
+  function handlePrintReport() {
+    const w = window.open('', '_blank');
+    if (!w) return;
+
+    const periodo = `${filterDateStart ? new Date(filterDateStart).toLocaleDateString('pt-BR') : 'Início'} até ${filterDateEnd ? new Date(filterDateEnd).toLocaleDateString('pt-BR') : 'Hoje'}`;
+    const incomePending = filteredRecords.filter(r => r.type === 'Income' && r.status === 'Pending');
+    const incomePaid = filteredRecords.filter(r => r.type === 'Income' && r.status === 'Paid');
+    const expensePending = filteredRecords.filter(r => r.type === 'Expense' && r.status === 'Pending');
+    const expensePaid = filteredRecords.filter(r => r.type === 'Expense' && r.status === 'Paid');
+
+    const linha = (label: string, val: number, color: string) =>
+      `<tr><td style="padding:4px 8px;border-bottom:1px solid #eee;font-size:12px">${label}</td><td style="padding:4px 8px;border-bottom:1px solid #eee;text-align:right;font-weight:bold;color:${color};font-size:12px">R$ ${val.toFixed(2).replace('.', ',')}</td></tr>`;
+
+    const recordRow = (r: any) => {
+      const cor = r.type === 'Income' ? '#16a34a' : '#dc2626';
+      const statusLabel = r.status === 'Paid' ? (r.type === 'Income' ? 'Recebido' : 'Pago') : 'Pendente';
+      const statusCor = r.status === 'Paid' ? (r.type === 'Income' ? '#16a34a' : '#dc2626') : '#ea580c';
+      return `<tr>
+        <td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:11px;color:#333">${r.description}</td>
+        <td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:11px;color:#666">${new Date(r.due_date).toLocaleDateString('pt-BR')}</td>
+        <td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:11px;color:#666">${r.customers?.name || '-'}</td>
+        <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right;font-weight:bold;color:${cor};font-size:12px">R$ ${r.amount.toFixed(2).replace('.', ',')}</td>
+        <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:center;font-size:10px;color:${statusCor};font-weight:bold">${statusLabel}</td>
+      </tr>`;
+    };
+
+    function total(arr: any[]) { return arr.reduce((s: number, r: any) => s + r.amount, 0); }
+    const ip = total(incomePending), ipd = total(incomePaid);
+    const ep = total(expensePending), epd = total(expensePaid);
+    const realized = ipd - epd;
+    const projected = (ipd + ip) - (epd + ep);
+
+    let bodyHtml = '';
+
+    if (relatorioTipo === 'sintetico') {
+      bodyHtml = `
+        <h2 style="color:#2563eb;margin:0 0 4px 0">CONTAS A RECEBER</h2>
+        <table style="width:100%;border-collapse:collapse;margin-bottom:20px">
+          ${linha('A Receber (Pendente)', ip, '#16a34a')}
+          ${linha('Recebido (Pago)', ipd, '#16a34a')}
+          <tr><td style="padding:4px 8px;font-size:11px;color:#888">Parcelas</td><td style="padding:4px 8px;text-align:right;font-size:11px;color:#888">${incomePending.length} pendente(s) / ${incomePaid.length} paga(s)</td></tr>
+        </table>
+        <h2 style="color:#dc2626;margin:0 0 4px 0">CONTAS A PAGAR</h2>
+        <table style="width:100%;border-collapse:collapse;margin-bottom:20px">
+          ${linha('A Pagar (Pendente)', ep, '#dc2626')}
+          ${linha('Pago', epd, '#dc2626')}
+          <tr><td style="padding:4px 8px;font-size:11px;color:#888">Parcelas</td><td style="padding:4px 8px;text-align:right;font-size:11px;color:#888">${expensePending.length} pendente(s) / ${expensePaid.length} paga(s)</td></tr>
+        </table>
+        <h2 style="color:#6b7280;margin:16px 0 4px 0;text-align:center">SALDO DO PERÍODO</h2>
+        <table style="width:100%;border-collapse:collapse;margin-bottom:10px">
+          ${linha('Realizado (Recebido - Pago)', realized, realized >= 0 ? '#2563eb' : '#dc2626')}
+          ${linha('Projetado (Todas as contas)', projected, projected >= 0 ? '#6366f1' : '#ea580c')}
+        </table>`;
+    } else {
+      const incomeList = filteredRecords.filter(r => r.type === 'Income').map(recordRow).join('');
+      const expenseList = filteredRecords.filter(r => r.type === 'Expense').map(recordRow).join('');
+      bodyHtml = `
+        ${incomeList ? `<h2 style="color:#16a34a;margin:0 0 4px 0">CONTAS A RECEBER</h2>
+        <table style="width:100%;border-collapse:collapse;margin-bottom:20px">
+          <thead><tr style="background:#f0fdf4;font-size:10px;color:#166534">
+            <th style="padding:6px 8px;text-align:left">Descrição</th>
+            <th style="padding:6px 8px;text-align:left">Vencimento</th>
+            <th style="padding:6px 8px;text-align:left">Cliente</th>
+            <th style="padding:6px 8px;text-align:right">Valor</th>
+            <th style="padding:6px 8px;text-align:center">Status</th>
+          </tr></thead>
+          <tbody>${incomeList}</tbody>
+        </table>` : ''}
+        ${expenseList ? `<h2 style="color:#dc2626;margin:0 0 4px 0">CONTAS A PAGAR</h2>
+        <table style="width:100%;border-collapse:collapse;margin-bottom:20px">
+          <thead><tr style="background:#fef2f2;font-size:10px;color:#991b1b">
+            <th style="padding:6px 8px;text-align:left">Descrição</th>
+            <th style="padding:6px 8px;text-align:left">Vencimento</th>
+            <th style="padding:6px 8px;text-align:left">Fornecedor</th>
+            <th style="padding:6px 8px;text-align:right">Valor</th>
+            <th style="padding:6px 8px;text-align:center">Status</th>
+          </tr></thead>
+          <tbody>${expenseList}</tbody>
+        </table>` : ''}
+        ${!incomeList && !expenseList ? '<p style="text-align:center;color:#999;font-size:13px;padding:40px 0">Nenhum lançamento no período.</p>' : ''}`;
+    }
+
+    w.document.write(`
+      <html>
+      <head><title>Relatório Financeiro</title>
+      <style>
+        @page { margin: 10mm; }
+        body { font-family:Arial,Helvetica,sans-serif; color:#333; padding:0; margin:0; }
+        h1 { font-size:18px; color:#1e3a5f; margin:0 0 4px 0; }
+        .periodo { font-size:12px; color:#888; margin-bottom:20px; }
+        h2 { font-size:14px; margin-top:20px; }
+        table { page-break-inside: avoid; }
+        .total-geral { margin-top:24px; border-top:2px solid #333; padding-top:12px; text-align:right; font-size:14px; font-weight:bold; }
+        .footer { margin-top:30px; font-size:10px; color:#aaa; text-align:center; border-top:1px solid #ddd; padding-top:8px; }
+      </style>
+      </head>
+      <body>
+        <h1>Relatório de Contas a Pagar e a Receber</h1>
+        <div class="periodo">Período: ${periodo} &mdash; ${filteredRecords.length} registro(s)</div>
+        ${bodyHtml}
+        <div class="footer">Relatório gerado em ${new Date().toLocaleString('pt-BR')}</div>
+      </body>
+      </html>
+    `);
+    w.document.close();
+    w.focus();
+    setTimeout(() => { w.print(); }, 300);
+  }
+
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
@@ -860,7 +969,7 @@ export default function FinancePage() {
                 Fechar
               </button>
               <button
-                onClick={() => window.print()}
+                onClick={handlePrintReport}
                 className="flex-1 py-2.5 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
               >
                 <Printer size={16} /> Imprimir Relatório
@@ -872,26 +981,6 @@ export default function FinancePage() {
 
       <style>{`
         @media print {
-          @page { margin: 10mm; size: A4; }
-          html, body { height: 100%; margin: 0; padding: 0; background: white; }
-          body * { visibility: hidden !important; }
-          .print-content, .print-content * { visibility: visible !important; }
-          .print-content {
-            position: fixed !important;
-            inset: 0 !important;
-            width: 100% !important;
-            min-height: 100vh !important;
-            height: auto !important;
-            max-height: none !important;
-            overflow: visible !important;
-            background: white !important;
-            padding: 15mm !important;
-            margin: 0 !important;
-            border: none !important;
-            border-radius: 0 !important;
-            box-shadow: none !important;
-            z-index: 999999 !important;
-          }
           .no-print { display: none !important; }
           .print-section { page-break-inside: avoid; }
         }
