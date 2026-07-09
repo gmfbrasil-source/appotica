@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { Users, ClipboardList, DollarSign, ArrowUpRight, ShoppingBag, Wallet, FileText, Loader2, TrendingUp } from 'lucide-react';
+import { Users, ClipboardList, DollarSign, ArrowUpRight, ShoppingBag, Wallet, FileText, Loader2, TrendingUp, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -144,9 +144,37 @@ export default function Dashboard() {
           <p className="text-gray-500 text-xs font-medium">Vendas no Mês</p>
           <p className="text-2xl font-black text-gray-900 mt-0.5">{formatCurrency(stats.monthIncome)}</p>
         </Link>
-      </div>
+       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+       {/* ALERTA DE DÍVIDAS / INADIMPLÊNCIA */}
+       {(stats.overdueIncome > 0 || stats.overdueExpense > 0) && (
+         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6 animate-pulse">
+           {stats.overdueIncome > 0 && (
+             <div className="bg-orange-50 border border-orange-200 p-4 rounded-2xl flex items-center gap-3">
+               <div className="bg-orange-100 p-2 rounded-lg text-orange-600">
+                 <AlertCircle size={20} />
+               </div>
+               <div>
+                 <p className="text-orange-800 text-xs font-bold uppercase">Recebíveis em Atraso</p>
+                 <p className="text-lg font-black text-orange-700">{formatCurrency(stats.overdueIncome)}</p>
+               </div>
+             </div>
+           )}
+           {stats.overdueExpense > 0 && (
+             <div className="bg-red-50 border border-red-200 p-4 rounded-2xl flex items-center gap-3">
+               <div className="bg-red-100 p-2 rounded-lg text-red-600">
+                 <AlertCircle size={20} />
+               </div>
+               <div>
+                 <p className="text-red-800 text-xs font-bold uppercase">Contas a Pagar em Atraso</p>
+                 <p className="text-lg font-black text-red-700">{formatCurrency(stats.overdueExpense)}</p>
+               </div>
+             </div>
+           )}
+         </div>
+       )}
+
+       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* GRÁFICO */}
         <div className="lg:col-span-2 bg-white p-5 rounded-3xl border border-gray-100 shadow-sm">
           <h2 className="text-base font-bold text-gray-800 mb-4">Fluxo Financeiro (6 meses)</h2>
