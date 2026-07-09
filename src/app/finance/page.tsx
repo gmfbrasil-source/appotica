@@ -685,7 +685,7 @@ export default function FinancePage() {
               {relatorioTipo === 'sintetico' && (
                 <>
                   {/* Contas a Receber */}
-                  <div className="mb-6">
+                  <div className="mb-6 print-section">
                     <h3 className="text-sm font-bold text-green-700 uppercase mb-3 flex items-center gap-2">
                       <ArrowUpCircle size={16} /> Contas a Receber
                     </h3>
@@ -720,7 +720,7 @@ export default function FinancePage() {
                   </div>
 
                   {/* Contas a Pagar */}
-                  <div className="mb-6">
+                  <div className="mb-6 print-section">
                     <h3 className="text-sm font-bold text-red-700 uppercase mb-3 flex items-center gap-2">
                       <ArrowDownCircle size={16} /> Contas a Pagar
                     </h3>
@@ -755,7 +755,7 @@ export default function FinancePage() {
                   </div>
 
                   {/* Saldo do Período */}
-                  {(() => {
+                  <div className="print-section">{(() => {
                     const incomePaid = filteredRecords.filter(r => r.type === 'Income' && r.status === 'Paid').reduce((acc, r) => acc + r.amount, 0);
                     const expensePaid = filteredRecords.filter(r => r.type === 'Expense' && r.status === 'Paid').reduce((acc, r) => acc + r.amount, 0);
                     const incomePending = filteredRecords.filter(r => r.type === 'Income' && r.status === 'Pending').reduce((acc, r) => acc + r.amount, 0);
@@ -781,7 +781,7 @@ export default function FinancePage() {
                         </div>
                       </div>
                     );
-                  })()}
+                  })()}</div>
                 </>
               )}
 
@@ -790,7 +790,7 @@ export default function FinancePage() {
                 <>
                   {/* Contas a Receber */}
                   {filteredRecords.filter(r => r.type === 'Income').length > 0 && (
-                    <div className="mb-6">
+                    <div className="mb-6 print-section">
                       <h3 className="text-sm font-bold text-green-700 uppercase mb-3 flex items-center gap-2">
                         <ArrowUpCircle size={16} /> Contas a Receber
                       </h3>
@@ -818,7 +818,7 @@ export default function FinancePage() {
 
                   {/* Contas a Pagar */}
                   {filteredRecords.filter(r => r.type === 'Expense').length > 0 && (
-                    <div className="mb-6">
+                    <div className="mb-6 print-section">
                       <h3 className="text-sm font-bold text-red-700 uppercase mb-3 flex items-center gap-2">
                         <ArrowDownCircle size={16} /> Contas a Pagar
                       </h3>
@@ -870,27 +870,30 @@ export default function FinancePage() {
         </div>
       )}
 
-      <style jsx>{`
+      <style>{`
         @media print {
-          body * {
-            visibility: hidden;
-          }
-          .print-content, .print-content * {
-            visibility: visible;
-          }
+          @page { margin: 10mm; size: A4; }
+          html, body { height: 100%; margin: 0; padding: 0; background: white; }
+          body * { visibility: hidden !important; }
+          .print-content, .print-content * { visibility: visible !important; }
           .print-content {
-            position: fixed;
-            left: 0;
-            top: 0;
-            width: 100%;
-            padding: 20px;
-            background: white;
+            position: fixed !important;
+            inset: 0 !important;
+            width: 100% !important;
+            min-height: 100vh !important;
+            height: auto !important;
             max-height: none !important;
             overflow: visible !important;
+            background: white !important;
+            padding: 15mm !important;
+            margin: 0 !important;
+            border: none !important;
+            border-radius: 0 !important;
+            box-shadow: none !important;
+            z-index: 999999 !important;
           }
-          .no-print {
-            display: none !important;
-          }
+          .no-print { display: none !important; }
+          .print-section { page-break-inside: avoid; }
         }
       `}</style>
     </div>
