@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { formatCurrency } from '@/lib/format';
+import { formatCurrency, companyInfo } from '@/lib/format';
 import { Plus, Search, User, ChevronDown, MessageCircle, AlertCircle, Calendar, DollarSign, ShoppingBag, X, Phone, Mail, FileText, CreditCard, CheckCircle, Clock, ArrowRight, MapPin, Pencil } from 'lucide-react';
 import Link from 'next/link';
 
@@ -142,7 +142,7 @@ export default function CustomersPage() {
       return;
     }
     const phoneClean = customer.phone.replace(/\D/g, '');
-    const msg = encodeURIComponent(`Olá ${customer.name}! Tudo bem? Aqui é da Ótica, passando para saber como você está.`);
+    const msg = encodeURIComponent(`Oi ${customer.name}! Como você está? Espero que esteja tudo bem por aí 😊 Aqui é da ${companyInfo.nomeFantasia}, passando para saber como você está e se precisa de alguma ajuda.`);
     window.open(`https://wa.me/55${phoneClean}?text=${msg}`, '_blank');
   }
 
@@ -154,11 +154,11 @@ export default function CustomersPage() {
     const phoneClean = customer.phone.replace(/\D/g, '');
     const items = overdueIncome.map(r => `- ${r.description}: ${formatCurrency(Number(r.amount))}`).join('\n');
     const msg = encodeURIComponent(
-      `Olá ${customer.name}! Tudo bem?\n\n` +
-      `Identificamos que há valor${overdueIncome.length > 1 ? 'es' : ''} pendente${overdueIncome.length > 1 ? 's' : ''} em nosso sistema:\n\n` +
+      `Oi ${customer.name}! Tudo bem com você? 😊 Aqui é da ${companyInfo.nomeFantasia}.\n\n` +
+      `Vi aqui no sistema que tem${overdueIncome.length > 1 ? ' uns' : ' um'} valor${overdueIncome.length > 1 ? 'es' : ''} pendente${overdueIncome.length > 1 ? 's' : ''}${overdueIncome[0]?.due_date ? ` desde ${new Date(overdueIncome[0].due_date).toLocaleDateString('pt-BR')}` : ''}:\n\n` +
       `${items}\n\n` +
-      `Valor total em atraso: ${formatCurrency(totalOverdueIncome)}\n\n` +
-      `Pedimos gentilmente que entre em contato conosco para regularizar. Estamos à disposição!`
+      `Total: ${formatCurrency(totalOverdueIncome)}\n\n` +
+      `Se já resolveu, pode ignorar essa mensagem. Se precisar de ajuda para quitar ou negociar, é só me chamar! Estamos aqui para ajudar 💙`
     );
     window.open(`https://wa.me/55${phoneClean}?text=${msg}`, '_blank');
   }

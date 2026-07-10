@@ -865,11 +865,11 @@ export default function SalesPage() {
                   {createdOS.phone && (
                     <button onClick={() => {
                       const phoneClean = createdOS.phone.replace(/\D/g, '');
-                      let msg = `Olá ${createdOS.clientName}! Segue o carnê de pagamento da sua compra na ${companyInfo.nomeFantasia}:\n\n`;
+                      let msg = `Oi ${createdOS.clientName}! Tudo bem? 😊 Aqui é da ${companyInfo.nomeFantasia}.\n\nSegue o carnê com as parcelinhas da sua compra:\n\n`;
                       createdOS.installmentData.forEach((inst: any) => {
                         msg += `• ${inst.num}/${createdOS.instCount} - Vence ${inst.due} - ${formatCurrency(inst.amount)}\n`;
                       });
-                      msg += `\nTotal: ${formatCurrency(createdOS.total_value)}`;
+                      msg += `\nTotal: ${formatCurrency(createdOS.total_value)}\n\nQualquer dúvida é só chamar! 💙`;
                       window.open(`https://wa.me/55${phoneClean}?text=${encodeURIComponent(msg)}`, '_blank');
                     }} className="flex-1 py-2.5 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl transition-all text-sm flex items-center justify-center gap-1.5 min-w-[120px]">
                       <MessageCircle size={16} /> WhatsApp
@@ -877,11 +877,11 @@ export default function SalesPage() {
                   )}
                   {createdOS.email && (
                     <button onClick={() => {
-                      let body = `Olá ${createdOS.clientName},\n\nSegue o carnê de pagamento:\n\n`;
+                      let body = `Olá ${createdOS.clientName}! Tudo bem?\n\nSegue o carnê com as parcelinhas da sua compra na ${companyInfo.nomeFantasia}:\n\n`;
                       createdOS.installmentData.forEach((inst: any) => {
                         body += `${inst.num}/${createdOS.instCount} - ${inst.due} - ${formatCurrency(inst.amount)}\n`;
                       });
-                      body += `\nTotal: ${formatCurrency(createdOS.total_value)}\n\n${companyInfo.nomeFantasia}`;
+                      body += `\nTotal: ${formatCurrency(createdOS.total_value)}\n\nQualquer dúvida é só responder esse e-mail!\n\n${companyInfo.nomeFantasia}`;
                       window.open(`mailto:${createdOS.email}?subject=Carnê de Pagamento - ${companyInfo.nomeFantasia}&body=${encodeURIComponent(body)}`, '_blank');
                     }} className="flex-1 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl transition-all text-sm flex items-center justify-center gap-1.5 min-w-[120px]">
                       <FileText size={16} /> E-mail

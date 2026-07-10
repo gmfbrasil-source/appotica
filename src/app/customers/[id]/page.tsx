@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { formatCurrency } from '@/lib/format';
+import { formatCurrency, companyInfo } from '@/lib/format';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Phone, MessageCircle, Calendar, DollarSign, AlertCircle, ShoppingBag } from 'lucide-react';
 import Link from 'next/link';
@@ -89,7 +89,8 @@ export default function CustomerDetailsPage() {
     }
 
     const phone = String(customer.phone).replace(/\D/g, '');
-    const message = `Olá ${customer.name}, tudo bem? Aqui é da Ótica. Notamos que você possui parcelas em aberto no valor de ${formatCurrency(totalPending)}. Podemos te ajudar a regularizar?`;
+    const overdueAmount = overdueRecords.reduce((acc, r) => acc + (Number(r.amount) || 0), 0);
+    const message = `Oi ${customer.name}! Tudo bem com você? 😊 Aqui é da ${companyInfo.nomeFantasia}.\n\nVi aqui que tem algumas parcelinhas pendentes no valor de ${formatCurrency(overdueAmount)}. Se já resolveu, pode ignorar essa mensagem hein! Mas se precisar de ajuda ou quiser negociar, é só me chamar que a gente se acerta 💙`;
     const url = `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
     window.open(url, '_blank');
   }
