@@ -127,7 +127,9 @@ export default function SalesPage() {
 
   // Seções do acordeão
   const section1Done = isNewCustomer ? !!newCustomer.name : !!selectedCustomerId;
-  const section2Done = isSunglasses || Object.values(prescription).some(v => v !== '');
+  const section2Done = isSunglasses || Object.values(prescription).some(v => v !== '') ||
+    saleDetails.frame_width || saleDetails.bridge_rim || saleDetails.major_angle ||
+    saleDetails.dp_os || saleDetails.altura;
   const section3Done = !!saleDetails.total_value;
 
   function getCustomerName(): string {
@@ -593,7 +595,7 @@ export default function SalesPage() {
         </AccordionSection>
 
         {/* SEÇÃO 2: GRAU (PRESCRIÇÃO) */}
-        <AccordionSection num={2} title="Receita / Grau" done={section2Done} canOpen={section1Done} isOpen={activeSection === 2} onToggle={() => setActiveSection(activeSection === 2 ? 0 : 2)} summary={section2Done ? (isSunglasses ? 'Óculos de Sol' : 'Grau informado') : ''}>
+        <AccordionSection num={2} title="Receita / Grau" done={section2Done} canOpen={section1Done} isOpen={activeSection === 2} onToggle={() => setActiveSection(activeSection === 2 ? 0 : 2)} summary={section2Done ? (isSunglasses ? 'Óculos de Sol' : saleDetails.frame_width ? 'Medidas informadas' : 'Grau informado') : ''}>
           <label className="flex items-center gap-2 mb-4 cursor-pointer">
             <input
               type="checkbox"
@@ -653,6 +655,28 @@ export default function SalesPage() {
               </div>
             </>
           )}
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Des. Arm. (mm)</label>
+              <input type="number" step="0.1" min="0" placeholder="Ex: 52" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={saleDetails.frame_width} onChange={(e) => setSaleDetails({...saleDetails, frame_width: e.target.value})} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Ponte + Aro (mm)</label>
+              <input type="number" step="0.1" min="0" placeholder="Ex: 18" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={saleDetails.bridge_rim} onChange={(e) => setSaleDetails({...saleDetails, bridge_rim: e.target.value})} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Ang. Maior (°)</label>
+              <input type="number" step="0.1" min="0" placeholder="Ex: 10" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={saleDetails.major_angle} onChange={(e) => setSaleDetails({...saleDetails, major_angle: e.target.value})} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">D.P. (mm)</label>
+              <input type="number" step="0.5" min="0" placeholder="Ex: 62" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={saleDetails.dp_os} onChange={(e) => setSaleDetails({...saleDetails, dp_os: e.target.value})} />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Altura (mm)</label>
+              <input type="number" step="0.5" min="0" placeholder="Ex: 22" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={saleDetails.altura} onChange={(e) => setSaleDetails({...saleDetails, altura: e.target.value})} />
+            </div>
+          </div>
           <div className="flex gap-2 mt-3">
             <button type="button" onClick={() => setActiveSection(3)} className="flex-1 py-2.5 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors text-sm">
               {section2Done ? 'Próximo' : 'Pular (Sem Grau)'}
@@ -694,31 +718,6 @@ export default function SalesPage() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Modelo / Grau da Lente</label>
                 <input type="text" placeholder="Ex: Varilux Crizal Sapphire" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={saleDetails.lenses} onChange={(e) => setSaleDetails({...saleDetails, lenses: e.target.value})} />
-              </div>
-            </div>
-          )}
-
-          {geraOS && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-3">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Des. Arm. (mm)</label>
-                <input type="number" step="0.1" min="0" placeholder="Ex: 52" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={saleDetails.frame_width} onChange={(e) => setSaleDetails({...saleDetails, frame_width: e.target.value})} />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Ponte + Aro (mm)</label>
-                <input type="number" step="0.1" min="0" placeholder="Ex: 18" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={saleDetails.bridge_rim} onChange={(e) => setSaleDetails({...saleDetails, bridge_rim: e.target.value})} />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Ang. Maior (°)</label>
-                <input type="number" step="0.1" min="0" placeholder="Ex: 10" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={saleDetails.major_angle} onChange={(e) => setSaleDetails({...saleDetails, major_angle: e.target.value})} />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">D.P. (mm)</label>
-                <input type="number" step="0.5" min="0" placeholder="Ex: 62" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={saleDetails.dp_os} onChange={(e) => setSaleDetails({...saleDetails, dp_os: e.target.value})} />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Altura (mm)</label>
-                <input type="number" step="0.5" min="0" placeholder="Ex: 22" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={saleDetails.altura} onChange={(e) => setSaleDetails({...saleDetails, altura: e.target.value})} />
               </div>
             </div>
           )}
