@@ -308,6 +308,43 @@ export default function OSDetailPage() {
                   <p className="font-bold text-gray-800">{osData.notes?.split('\n')[1]?.replace('Lente: ', '') || 'Não informado'}</p>
                 </div>
               </div>
+              {(osData.frame_width || osData.bridge_rim || osData.major_angle || osData.dp_os || osData.altura) && (
+                <div>
+                  <p className="text-xs text-gray-500 mb-2">Medições da Armação</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {osData.frame_width != null && (
+                      <div className="bg-white p-2.5 rounded-xl border border-gray-100">
+                        <p className="text-[10px] text-gray-400 uppercase">Des. Arm.</p>
+                        <p className="font-bold text-gray-800">{osData.frame_width} mm</p>
+                      </div>
+                    )}
+                    {osData.bridge_rim != null && (
+                      <div className="bg-white p-2.5 rounded-xl border border-gray-100">
+                        <p className="text-[10px] text-gray-400 uppercase">Ponte + Aro</p>
+                        <p className="font-bold text-gray-800">{osData.bridge_rim} mm</p>
+                      </div>
+                    )}
+                    {osData.major_angle != null && (
+                      <div className="bg-white p-2.5 rounded-xl border border-gray-100">
+                        <p className="text-[10px] text-gray-400 uppercase">Ang. Maior</p>
+                        <p className="font-bold text-gray-800">{osData.major_angle}°</p>
+                      </div>
+                    )}
+                    {osData.dp_os != null && (
+                      <div className="bg-white p-2.5 rounded-xl border border-gray-100">
+                        <p className="text-[10px] text-gray-400 uppercase">D.P.</p>
+                        <p className="font-bold text-gray-800">{osData.dp_os} mm</p>
+                      </div>
+                    )}
+                    {osData.altura != null && (
+                      <div className="bg-white p-2.5 rounded-xl border border-gray-100">
+                        <p className="text-[10px] text-gray-400 uppercase">Altura</p>
+                        <p className="font-bold text-gray-800">{osData.altura} mm</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
               <div>
                 <p className="text-xs text-gray-500">Observações Adicionais</p>
                 <p className="text-sm text-gray-700 bg-white p-3 rounded-xl border border-gray-200 mt-1">
@@ -416,6 +453,22 @@ export default function OSDetailPage() {
             <p className="font-bold text-xs uppercase border-b">Especificações</p>
             <p><strong>Armação:</strong> {osData.notes?.split('\n')[0]?.replace('Armação: ', '') || '---'}</p>
             <p><strong>Lentes:</strong> {osData.notes?.split('\n')[1]?.replace('Lente: ', '') || '---'}</p>
+            {(osData.frame_width != null || osData.bridge_rim != null || osData.major_angle != null || osData.dp_os != null || osData.altura != null) && (
+              <div className="grid grid-cols-3 text-center border border-black mt-2">
+                <div className="border-r border-b border-black p-0.5 font-bold text-[9px]">Des.Arm.</div>
+                <div className="border-r border-b border-black p-0.5 font-bold text-[9px]">Ponte+Aro</div>
+                <div className="border-b border-black p-0.5 font-bold text-[9px]">Ang.Maior</div>
+                <div className="border-r border-black p-0.5 text-[9px]">{osData.frame_width != null ? `${osData.frame_width}mm` : '---'}</div>
+                <div className="border-r border-black p-0.5 text-[9px]">{osData.bridge_rim != null ? `${osData.bridge_rim}mm` : '---'}</div>
+                <div className="p-0.5 text-[9px]">{osData.major_angle != null ? `${osData.major_angle}°` : '---'}</div>
+                <div className="border-r border-t border-black p-0.5 font-bold text-[9px]">D.P.</div>
+                <div className="border-t border-black p-0.5 font-bold text-[9px]">Altura</div>
+                <div></div>
+                <div className="border-r border-black p-0.5 text-[9px]">{osData.dp_os != null ? `${osData.dp_os}mm` : '---'}</div>
+                <div className="p-0.5 text-[9px]">{osData.altura != null ? `${osData.altura}mm` : '---'}</div>
+                <div></div>
+              </div>
+            )}
             <p><strong>Obs:</strong> {osData.notes?.split('\n')[2]?.replace('Observações: ', '') || '---'}</p>
           </div>
           <div className="text-center text-[10px] mt-10 border-t pt-2 space-y-0.5">

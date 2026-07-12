@@ -6,6 +6,14 @@ ADD COLUMN IF NOT EXISTS customer_id UUID REFERENCES customers(id) ON DELETE SET
 ALTER TABLE service_orders
 ADD COLUMN IF NOT EXISTS os_number TEXT;
 
+-- Adicionar colunas de medição para O.S. (Des. Arm., Ponte+Aro, Ang. Maior, D.P., Altura)
+ALTER TABLE service_orders
+ADD COLUMN IF NOT EXISTS frame_width DECIMAL(5,2),
+ADD COLUMN IF NOT EXISTS bridge_rim DECIMAL(5,2),
+ADD COLUMN IF NOT EXISTS major_angle DECIMAL(5,2),
+ADD COLUMN IF NOT EXISTS dp_os DECIMAL(5,2),
+ADD COLUMN IF NOT EXISTS altura DECIMAL(5,2);
+
 -- 1. CASCADE delete: ao excluir O.S., financeiro vinculado é excluído
 ALTER TABLE financial_records 
 DROP CONSTRAINT IF EXISTS financial_records_order_id_fkey,

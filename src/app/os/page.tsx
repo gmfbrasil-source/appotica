@@ -16,7 +16,12 @@ export default function OSPage() {
     scheduled_date: '',
     status: 'Open',
     notes: '',
-    os_number: ''
+    os_number: '',
+    frame_width: '',
+    bridge_rim: '',
+    major_angle: '',
+    dp_os: '',
+    altura: ''
   });
 
   useEffect(() => {
@@ -51,14 +56,23 @@ export default function OSPage() {
     const { error } = await supabase
       .from('service_orders')
       .insert([{
-        ...formData,
+        customer_id: formData.customer_id,
         total_value: parseFloat(formData.total_value),
-        shop_id: profile.shop_id
+        scheduled_date: formData.scheduled_date,
+        status: formData.status,
+        notes: formData.notes,
+        os_number: formData.os_number,
+        shop_id: profile.shop_id,
+        frame_width: formData.frame_width ? parseFloat(formData.frame_width) : null,
+        bridge_rim: formData.bridge_rim ? parseFloat(formData.bridge_rim) : null,
+        major_angle: formData.major_angle ? parseFloat(formData.major_angle) : null,
+        dp_os: formData.dp_os ? parseFloat(formData.dp_os) : null,
+        altura: formData.altura ? parseFloat(formData.altura) : null
       }]);
     
     if (!error) {
       setShowForm(false);
-      setFormData({ customer_id: '', total_value: '', scheduled_date: '', status: 'Open', notes: '', os_number: '' });
+      setFormData({ customer_id: '', total_value: '', scheduled_date: '', status: 'Open', notes: '', os_number: '', frame_width: '', bridge_rim: '', major_angle: '', dp_os: '', altura: '' });
       fetchOrders();
     } else {
       alert('Erro ao salvar: ' + error.message);
@@ -122,6 +136,30 @@ export default function OSPage() {
                     value={formData.scheduled_date}
                     onChange={(e) => setFormData({...formData, scheduled_date: e.target.value})}
                   />
+                </div>
+              </div>
+
+              <p className="text-xs font-bold text-gray-500 uppercase mt-2">Medições da Armação</p>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Des. Arm. (mm)</label>
+                  <input type="number" step="0.1" min="0" placeholder="52" className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" value={formData.frame_width} onChange={(e) => setFormData({...formData, frame_width: e.target.value})} />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Ponte + Aro (mm)</label>
+                  <input type="number" step="0.1" min="0" placeholder="18" className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" value={formData.bridge_rim} onChange={(e) => setFormData({...formData, bridge_rim: e.target.value})} />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Ang. Maior (°)</label>
+                  <input type="number" step="0.1" min="0" placeholder="10" className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" value={formData.major_angle} onChange={(e) => setFormData({...formData, major_angle: e.target.value})} />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">D.P. (mm)</label>
+                  <input type="number" step="0.5" min="0" placeholder="62" className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" value={formData.dp_os} onChange={(e) => setFormData({...formData, dp_os: e.target.value})} />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Altura (mm)</label>
+                  <input type="number" step="0.5" min="0" placeholder="22" className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" value={formData.altura} onChange={(e) => setFormData({...formData, altura: e.target.value})} />
                 </div>
               </div>
               <div>
