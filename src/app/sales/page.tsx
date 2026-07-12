@@ -669,7 +669,7 @@ export default function SalesPage() {
               <input type="number" step="0.1" min="0" placeholder="Ex: 10" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={saleDetails.major_angle} onChange={(e) => setSaleDetails({...saleDetails, major_angle: e.target.value})} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">D.P. (mm)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">DMP (mm)</label>
               <input type="number" step="0.5" min="0" placeholder="Ex: 62" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={saleDetails.dp_os} onChange={(e) => setSaleDetails({...saleDetails, dp_os: e.target.value})} />
             </div>
             <div>
