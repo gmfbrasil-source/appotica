@@ -18,7 +18,6 @@ export default function LoginPage() {
 
     try {
       if (isSignUp) {
-        // Fluxo de Cadastro (Sign Up)
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
@@ -30,6 +29,23 @@ export default function LoginPage() {
         });
 
         if (error) throw error;
+
+        if (data.user) {
+          const { data: shop } = await supabase
+            .from('shops')
+            .insert({ name: `${fullName.split(' ')[0]} - Ótica` })
+            .select()
+            .single();
+
+          if (shop) {
+            await supabase.from('profiles').insert({
+              id: data.user.id,
+              shop_id: shop.id,
+              full_name: fullName,
+              role: 'admin'
+            });
+          }
+        }
 
         alert('Cadastro realizado com sucesso! Você já pode entrar.');
         setIsSignUp(false);

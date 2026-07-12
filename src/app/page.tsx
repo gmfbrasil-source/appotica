@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { Users, ClipboardList, DollarSign, ArrowUpRight, ShoppingBag, Wallet, FileText, Loader2, TrendingUp, AlertCircle } from 'lucide-react';
+import { Users, ClipboardList, DollarSign, ArrowUpRight, ShoppingBag, Wallet, FileText, Loader2, TrendingUp, AlertCircle, XCircle } from 'lucide-react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
@@ -21,6 +21,7 @@ export default function Dashboard() {
   const [recentOS, setRecentOS] = useState<any[]>([]);
   const [chartData, setChartData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchDashboardData();
@@ -28,41 +29,48 @@ export default function Dashboard() {
 
   async function fetchDashboardData() {
     setLoading(true);
+    setError(null);
     try {
-      const { data: profile } = await supabase.from('profiles').select('shop_id').single();
-      if (!profile?.shop_id) return;
+      const { data: profile, error: profileErr } = await supabase.from('profiles').select('shop_id').single();
+      if (profileErr || !profile?.shop_id) {
+        setError('Perfil sem loja vinculada. Entre em contato com o administrador.');
+        return;
+      }
 
-      const shopFilter = { shop_id: profile.shop_id };
-
-      const [{ count: custCount }, { count: osCount }, { data: finData }, { data: osData }] = await Promise.all([
+      const [custRes, osRes, finRes, osRecentRes] = await Promise.all([
         supabase.from('customers').select('*', { count: 'exact', head: true }).eq('shop_id', profile.shop_id),
-        supabase.from('service_orders').select('*', { count: 'exact', head: true }).eq('shop_id', profile.shop_id).not('status', 'in', '("Delivered","Cancelled")'),
+        supabase.from('service_orders').select('*', { count: 'exact', head: true }).eq('shop_id', profile.shop_id).filter('status', 'not.in', '(Delivered,Cancelled)'),
         supabase.from('financial_records').select('*').eq('shop_id', profile.shop_id),
         supabase.from('service_orders').select('*, customers(name)').eq('shop_id', profile.shop_id).order('created_at', { ascending: false }).limit(5),
       ]);
 
-       const finArr = finData || [];
-       const todayStr = new Date().toISOString().split('T')[0];
-       const pendingIncome = finArr.filter((r: any) => r.status === 'Pending' && r.type === 'Income').reduce((acc: number, r: any) => acc + r.amount, 0);
-       const pendingExpense = finArr.filter((r: any) => r.status === 'Pending' && r.type === 'Expense').reduce((acc: number, r: any) => acc + r.amount, 0);
-       
-       const overdueIncome = finArr.filter((r: any) => r.status === 'Pending' && r.type === 'Income' && r.due_date < todayStr).reduce((acc: number, r: any) => acc + r.amount, 0);
-       const overdueExpense = finArr.filter((r: any) => r.status === 'Pending' && r.type === 'Expense' && r.due_date < todayStr).reduce((acc: number, r: any) => acc + r.amount, 0);
+      if (custRes.error) console.error('Erro ao buscar clientes:', custRes.error);
+      if (osRes.error) console.error('Erro ao buscar O.S.:', osRes.error);
+      if (finRes.error) console.error('Erro ao buscar financeiro:', finRes.error);
+      if (osRecentRes.error) console.error('Erro ao buscar O.S. recentes:', osRecentRes.error);
 
-       const monthStart = new Date(); monthStart.setDate(1); monthStart.setHours(0, 0, 0, 0);
-       const monthIncome = finArr.filter((r: any) => r.status === 'Paid' && r.type === 'Income' && r.payment_date && new Date(r.payment_date) >= monthStart).reduce((acc: number, r: any) => acc + r.amount, 0);
- 
-       setStats({
-         customers: custCount || 0,
-         activeOS: osCount || 0,
-         pendingIncome,
-         pendingExpense,
-         monthIncome,
-         overdueIncome,
-         overdueExpense,
-       });
-       setRecentOS(osData || []);
+      const finArr = finRes.data || [];
+      const todayStr = new Date().toISOString().split('T')[0];
+      const monthStartStr = todayStr.slice(0, 7);
 
+      const pendingIncome = finArr.filter((r: any) => r.status === 'Pending' && r.type === 'Income').reduce((acc: number, r: any) => acc + r.amount, 0);
+      const pendingExpense = finArr.filter((r: any) => r.status === 'Pending' && r.type === 'Expense').reduce((acc: number, r: any) => acc + r.amount, 0);
+      
+      const overdueIncome = finArr.filter((r: any) => r.status === 'Pending' && r.type === 'Income' && r.due_date < todayStr).reduce((acc: number, r: any) => acc + r.amount, 0);
+      const overdueExpense = finArr.filter((r: any) => r.status === 'Pending' && r.type === 'Expense' && r.due_date < todayStr).reduce((acc: number, r: any) => acc + r.amount, 0);
+
+      const monthIncome = finArr.filter((r: any) => r.status === 'Paid' && r.type === 'Income' && r.payment_date?.startsWith(monthStartStr)).reduce((acc: number, r: any) => acc + r.amount, 0);
+
+      setStats({
+        customers: custRes.count || 0,
+        activeOS: osRes.count || 0,
+        pendingIncome,
+        pendingExpense,
+        monthIncome,
+        overdueIncome,
+        overdueExpense,
+      });
+      setRecentOS(osRecentRes.data || []);
 
       // Chart: últimos 6 meses
       const months: any[] = [];
@@ -78,6 +86,7 @@ export default function Dashboard() {
       setChartData(months);
     } catch (err) {
       console.error(err);
+      setError('Erro ao carregar dados do painel.');
     } finally {
       setLoading(false);
     }
@@ -89,6 +98,20 @@ export default function Dashboard() {
         <div className="text-center text-gray-500">
           <Loader2 className="animate-spin mx-auto mb-2" size={28} />
           <span className="text-sm">Carregando painel...</span>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-4 md:p-8 max-w-7xl mx-auto flex items-center justify-center min-h-[60vh]">
+        <div className="text-center max-w-sm">
+          <div className="bg-red-50 p-3 rounded-2xl w-fit mx-auto mb-4">
+            <XCircle size={32} className="text-red-500" />
+          </div>
+          <p className="text-gray-800 font-bold text-lg mb-1">Ops! Algo deu errado</p>
+          <p className="text-gray-500 text-sm">{error}</p>
         </div>
       </div>
     );
