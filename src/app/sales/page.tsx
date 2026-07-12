@@ -62,6 +62,7 @@ function AccordionSection({ num, title, done, isOpen, canOpen, onToggle, childre
 export default function SalesPage() {
   const [loading, setLoading] = useState(false);
   const [customers, setCustomers] = useState<any[]>([]);
+  const [paymentMethods, setPaymentMethods] = useState<any[]>([]);
   const [customerSearch, setCustomerSearch] = useState('');
   const [showCustomerSuggestions, setShowCustomerSuggestions] = useState(false);
   const [activeSection, setActiveSection] = useState(1);
@@ -111,10 +112,10 @@ export default function SalesPage() {
 
   // Dados de Pagamento / Financeiro
   const [payment, setPayment] = useState({
-    method: 'Pix', // Pix, Cartao_Credito, Cartao_Debito, Dinheiro, Boleto
+    method: '',
     downPayment: '',
     installments: '1',
-    status: 'Paid' // Paid, Pending
+    status: 'Paid'
   });
 
   // Seções do acordeão
@@ -134,7 +135,20 @@ export default function SalesPage() {
 
   useEffect(() => {
     fetchCustomers();
+    fetchPaymentMethods();
   }, []);
+
+  async function fetchPaymentMethods() {
+    const { data: profile } = await supabase.from('profiles').select('shop_id').single();
+    if (!profile?.shop_id) return;
+    const { data } = await supabase.from('payment_methods').select('*').eq('shop_id', profile.shop_id).eq('active', true).order('name');
+    if (data && data.length > 0) {
+      setPaymentMethods(data);
+      setPayment(prev => ({ ...prev, method: data[0].id }));
+    }
+  }
+
+  const selectedMethod = paymentMethods.find(m => m.id === payment.method);
 
   async function fetchCustomers() {
     const { data, error } = await supabase
@@ -254,57 +268,90 @@ export default function SalesPage() {
        const instCount = Math.max(parseInt(payment.installments) || 0, 0);
        const osRef = osData?.id?.slice(0, 8);
        const descPrefix = osRef ? `Venda O.S. #${osRef}` : 'Venda';
- 
-       // Entrada (só se > 0)
-       if (entrada > 0) {
-         const entryDue = instCount > 0 ? new Date(firstDueDate) : hoje;
+
+       // Cartão: recebimento integral + taxa automática
+       if (selectedMethod?.is_card) {
+         const totalFinal = entrada > 0 ? entrada : totalVal;
+         const taxaPerc = (selectedMethod.fee_percent || 0) / 100;
+         const feeAmount = Math.round(totalFinal * taxaPerc * 100) / 100;
+
          financialInserts.push({
            shop_id: shopId, type: 'Income',
-           description: `${descPrefix} (Entrada)`,
-           amount: entrada,
-           due_date: getLocalDate(entryDue),
-           payment_date: payment.status === 'Paid' ? hojeStr : null,
-           status: payment.status,
+           description: `${descPrefix} (${selectedMethod.name})`,
+           amount: totalFinal,
+           due_date: hojeStr,
+           payment_date: hojeStr,
+           status: 'Paid',
            order_id: osData?.id || null,
            customer_id: finalCustomerId
          });
-       }
- 
-       // Parcelas
-       if (instCount > 0 && restante > 0) {
-         const firstDate = new Date(firstDueDate);
-         for (let i = 0; i < instCount; i++) {
-           const baseValor = restante / instCount;
-           let valorParcela = Math.floor(baseValor * 100) / 100;
-           if (i === instCount - 1) valorParcela = Math.round((restante - valorParcela * (instCount - 1)) * 100) / 100;
-           const due = new Date(firstDate);
-           due.setDate(due.getDate() + i * 30);
+
+         if (feeAmount > 0) {
+           financialInserts.push({
+             shop_id: shopId, type: 'Expense',
+             description: `Taxa ${selectedMethod.name} - ${descPrefix}`,
+             amount: feeAmount,
+             due_date: hojeStr,
+             payment_date: hojeStr,
+             status: 'Paid',
+             order_id: osData?.id || null,
+             customer_id: finalCustomerId
+           });
+         }
+       } else {
+         // Demais métodos (Pix, Dinheiro, Boleto, Carnê)
+         // Entrada (só se > 0)
+         if (entrada > 0) {
+           const entryDue = instCount > 0 ? new Date(firstDueDate) : hoje;
            financialInserts.push({
              shop_id: shopId, type: 'Income',
-             description: `${descPrefix} (Parc. ${i+1}/${instCount})`,
-             amount: valorParcela,
-             due_date: getLocalDate(due),
-             payment_date: null,
-             status: 'Pending',
+             description: `${descPrefix} (Entrada)`,
+             amount: entrada,
+             due_date: getLocalDate(entryDue),
+             payment_date: payment.status === 'Paid' ? hojeStr : null,
+             status: payment.status,
+             order_id: osData?.id || null,
+             customer_id: finalCustomerId
+           });
+         }
+
+         // Parcelas
+         if (instCount > 0 && restante > 0) {
+           const firstDate = new Date(firstDueDate);
+           for (let i = 0; i < instCount; i++) {
+             const baseValor = restante / instCount;
+             let valorParcela = Math.floor(baseValor * 100) / 100;
+             if (i === instCount - 1) valorParcela = Math.round((restante - valorParcela * (instCount - 1)) * 100) / 100;
+             const due = new Date(firstDate);
+             due.setDate(due.getDate() + i * 30);
+             financialInserts.push({
+               shop_id: shopId, type: 'Income',
+               description: `${descPrefix} (Parc. ${i+1}/${instCount})`,
+               amount: valorParcela,
+               due_date: getLocalDate(due),
+               payment_date: null,
+               status: 'Pending',
+               order_id: osData?.id || null,
+               customer_id: finalCustomerId
+             });
+           }
+         }
+
+         // À vista (sem entrada nem parcelas)
+         if (entrada === 0 && instCount === 0) {
+           financialInserts.push({
+             shop_id: shopId, type: 'Income',
+             description: `${descPrefix} (À Vista)`,
+             amount: totalVal,
+             due_date: hojeStr,
+             payment_date: payment.status === 'Paid' ? hojeStr : null,
+             status: payment.status,
              order_id: osData?.id || null,
              customer_id: finalCustomerId
            });
          }
        }
- 
-       // À vista (sem entrada nem parcelas)
-       if (entrada === 0 && instCount === 0) {
-         financialInserts.push({
-           shop_id: shopId, type: 'Income',
-           description: `${descPrefix} (À Vista)`,
-           amount: totalVal,
-           due_date: hojeStr,
-           payment_date: payment.status === 'Paid' ? hojeStr : null,
-           status: payment.status,
-           order_id: osData?.id || null,
-           customer_id: finalCustomerId
-         });
-       }
+
 
 
       const { error: finErr } = await supabase.from('financial_records').insert(financialInserts);
@@ -314,7 +361,7 @@ export default function SalesPage() {
       const clientPhone = isNewCustomer ? newCustomer.phone : (customers.find(c => c.id === finalCustomerId)?.phone || '');
       // Monta dados das parcelas para o carnê
       const installmentData: { num: number; due: string; amount: number }[] = [];
-      if (instCount > 0 && restante > 0) {
+      if (!selectedMethod?.is_card && instCount > 0 && restante > 0) {
         const firstDate = new Date(firstDueDate);
         for (let i = 0; i < instCount; i++) {
           const baseValor = restante / instCount;
@@ -342,7 +389,7 @@ export default function SalesPage() {
         restante,
         instCount,
         installmentData,
-        paymentMethod: payment.method,
+        paymentMethod: selectedMethod?.name || payment.method,
         prescription: hasPrescriptionData ? prescription : null,
         notes: saleDetails.notes
       });
@@ -375,7 +422,7 @@ export default function SalesPage() {
        notes: '',
        saleDate: getLocalDate(new Date())
      });
-    setPayment({ method: 'Pix', downPayment: '', installments: '1', status: 'Paid' });
+    setPayment({ method: paymentMethods[0]?.id || '', downPayment: '', installments: '1', status: 'Paid' });
     setIsSunglasses(false);
     setOsNumber('');
     setGeraOS(true);
@@ -668,43 +715,52 @@ export default function SalesPage() {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Forma de Pagamento</label>
                 <select className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={payment.method} onChange={(e) => setPayment({...payment, method: e.target.value})}>
-                  <option value="Pix">Pix</option>
-                  <option value="Cartao_Credito">Cartão de Crédito</option>
-                  <option value="Cartao_Debito">Cartão de Débito</option>
-                  <option value="Dinheiro">Dinheiro</option>
-                  <option value="Boleto">Boleto Bancário</option>
-                  <option value="Carne">Carnê</option>
+                  {paymentMethods.map(m => (
+                    <option key={m.id} value={m.id}>{m.name}</option>
+                  ))}
                 </select>
+              {selectedMethod?.is_card && (
+                <p className="text-[10px] text-purple-600 mt-1">Taxa: {selectedMethod.fee_percent}% — recebimento integral</p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Valor de Entrada</label>
               <input type="number" step="0.01" min="0" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="R$ 0,00" value={payment.downPayment} onChange={(e) => setPayment({...payment, downPayment: e.target.value})} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Parcelas Restantes</label>
-              <select className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={payment.installments} onChange={(e) => {
-                setPayment({...payment, installments: e.target.value});
-                if (parseInt(e.target.value) > 0) {
-                  setFirstDueDate(getLocalDate(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)));
-                }
-              }}>
-                <option value="0">0x (Só Entrada)</option>
-                {[...Array(12)].map((_, i) => (
-                  <option key={i+1} value={i+1}>{i+1}x</option>
-                ))}
-              </select>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Parcelas</label>
+              {selectedMethod?.is_card ? (
+                <div className="w-full p-2.5 bg-gray-100 border border-gray-200 rounded-xl text-gray-400 text-sm flex items-center">
+                  À vista (integral)
+                </div>
+              ) : (
+                <select className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={payment.installments} onChange={(e) => {
+                  setPayment({...payment, installments: e.target.value});
+                  if (parseInt(e.target.value) > 0) {
+                    setFirstDueDate(getLocalDate(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)));
+                  }
+                }}>
+                  <option value="0">0x (Só Entrada)</option>
+                  {[...Array(selectedMethod?.max_installments || 12)].map((_, i) => (
+                    <option key={i+1} value={i+1}>{i+1}x</option>
+                  ))}
+                </select>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Status da Entrada</label>
               <select className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={payment.status} onChange={(e) => setPayment({...payment, status: e.target.value})}>
-                <option value="Paid">Pago / Recebido</option>
-                <option value="Pending">A Receber (Aberto)</option>
+                <option value="Paid">Recebido</option>
+                <option value="Pending">Receber na Entrega</option>
               </select>
+              {selectedMethod?.is_card && (
+                <p className="text-[10px] text-gray-500 mt-1">Cartão: recebimento integral automático</p>
+              )}
             </div>
           </div>
 
           {/* Data do primeiro vencimento das parcelas */}
-          {parseInt(payment.installments) > 0 && (
+          {!selectedMethod?.is_card && parseInt(payment.installments) > 0 && (
             <div className="mt-3">
               <label className="block text-sm font-medium text-gray-700 mb-1">Data do 1º Vencimento</label>
               <input type="date" required

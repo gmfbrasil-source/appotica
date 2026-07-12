@@ -3,14 +3,25 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useParams } from 'next/navigation';
 import { formatCurrency, companyInfo } from '@/lib/format';
-import { Printer, ArrowLeft, FileText, User, Calendar, Package, Trash2 } from 'lucide-react';
+import { Printer, ArrowLeft, FileText, User, Calendar, Package, Trash2, CheckCircle, Clock, DollarSign, ChevronDown } from 'lucide-react';
 import Link from 'next/link';
+
+const STATUS_OPTIONS = [
+  { value: 'Open', label: 'Aberto', color: 'bg-gray-100 text-gray-600' },
+  { value: 'In_Laboratory', label: 'Laboratório', color: 'bg-blue-100 text-blue-600' },
+  { value: 'Ready', label: 'Pronto', color: 'bg-yellow-100 text-yellow-600' },
+  { value: 'Delivered', label: 'Entregue', color: 'bg-green-100 text-green-600' },
+  { value: 'Cancelled', label: 'Cancelado', color: 'bg-red-100 text-red-600' },
+];
 
 export default function OSDetailPage() {
   const params = useParams();
   const osId = params.id as string;
   const [osData, setOsData] = useState<any>(null);
+  const [financialRecords, setFinancialRecords] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [showStatusMenu, setShowStatusMenu] = useState(false);
   const printAreaRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -29,7 +40,7 @@ export default function OSDetailPage() {
       if (osError) throw osError;
 
       const customerId = osDataResult.customers?.id || osDataResult.customer_id;
-      
+
       const { data: prescription, error: prescError } = await supabase
         .from('prescriptions')
         .select('*')
@@ -38,11 +49,18 @@ export default function OSDetailPage() {
         .limit(1)
         .single();
 
-      if (prescError && prescError.code !== 'PGRST116') { 
+      if (prescError && prescError.code !== 'PGRST116') {
         console.warn('Erro ao buscar receita:', prescError.message);
       }
 
+      const { data: finData } = await supabase
+        .from('financial_records')
+        .select('*')
+        .eq('order_id', osId)
+        .order('due_date', { ascending: true });
+
       setOsData({ ...osDataResult, prescription });
+      setFinancialRecords(finData || []);
     } catch (error: any) {
       console.error('Erro ao carregar O.S:', error);
       alert('Erro ao carregar detalhes da Ordem de Serviço.');
@@ -51,22 +69,55 @@ export default function OSDetailPage() {
     }
   }
 
-  function handlePrint() {
-    const printContent = printAreaRef.current?.innerHTML;
-    const originalContent = document.body.innerHTML;
+  async function handleChangeStatus(newStatus: string) {
+    if (newStatus === osData.status) { setShowStatusMenu(false); return; }
 
-    if (printContent) {
-      document.body.innerHTML = printContent;
-      window.print();
-      document.body.innerHTML = originalContent;
-      window.location.reload();
+    // Se for marcar como Entregue e tiver entrada pendente, pergunta
+    const pendingEntry = financialRecords.find(
+      r => r.status === 'Pending' && r.type === 'Income' && r.description.includes('(Entrada)')
+    );
+    if (newStatus === 'Delivered' && pendingEntry) {
+      const receiveNow = confirm('Deseja receber a entrada agora?');
+      if (receiveNow) {
+        await supabase
+          .from('financial_records')
+          .update({ status: 'Paid', payment_date: new Date().toISOString().split('T')[0] })
+          .eq('id', pendingEntry.id);
+      }
+    }
+
+    setUpdatingStatus(true);
+    const { error } = await supabase
+      .from('service_orders')
+      .update({ status: newStatus })
+      .eq('id', osId);
+
+    if (!error) {
+      setOsData((prev: any) => ({ ...prev, status: newStatus }));
+      fetchOSDetails();
+    } else {
+      alert('Erro ao atualizar status: ' + error.message);
+    }
+    setUpdatingStatus(false);
+    setShowStatusMenu(false);
+  }
+
+  async function handleReceiveEntry(recordId: string) {
+    if (!confirm('Receber esta entrada?')) return;
+    const { error } = await supabase
+      .from('financial_records')
+      .update({ status: 'Paid', payment_date: new Date().toISOString().split('T')[0] })
+      .eq('id', recordId);
+
+    if (!error) {
+      fetchOSDetails();
+    } else {
+      alert('Erro ao receber: ' + error.message);
     }
   }
 
   async function handleDeleteOS() {
-    if (!confirm('ATENÇÃO: Esta ação excluirá a Ordem de Serviço e TODOS os lançamentos financeiros vinculados a ela. Deseja realmente excluir?')) {
-      return;
-    }
+    if (!confirm('ATENÇÃO: Esta ação excluirá a Ordem de Serviço e TODOS os lançamentos financeiros vinculados a ela. Deseja realmente excluir?')) return;
 
     try {
       const { error } = await supabase
@@ -80,6 +131,17 @@ export default function OSDetailPage() {
       window.location.href = '/os';
     } catch (error: any) {
       alert('Erro ao excluir: ' + error.message);
+    }
+  }
+
+  function handlePrint() {
+    const printContent = printAreaRef.current?.innerHTML;
+    const originalContent = document.body.innerHTML;
+    if (printContent) {
+      document.body.innerHTML = printContent;
+      window.print();
+      document.body.innerHTML = originalContent;
+      window.location.reload();
     }
   }
 
@@ -100,30 +162,29 @@ export default function OSDetailPage() {
     );
   }
 
+  const currentStatus = STATUS_OPTIONS.find(s => s.value === osData.status) || STATUS_OPTIONS[0];
+  const pendingEntry = financialRecords.find(r => r.status === 'Pending' && r.type === 'Income' && r.description.includes('(Entrada)'));
+  const entryRecord = financialRecords.find(r => r.type === 'Income' && r.description.includes('(Entrada)'));
+  const feeRecords = financialRecords.filter(r => r.description.startsWith('Taxa'));
+  const incomeRecords = financialRecords.filter(r => r.type === 'Income' && !r.description.startsWith('Taxa'));
+  const totalIncome = incomeRecords.reduce((acc, r) => acc + (r.status === 'Paid' ? r.amount : 0), 0);
+  const totalPending = incomeRecords.reduce((acc, r) => acc + (r.status === 'Pending' ? r.amount : 0), 0);
+
   return (
     <div className="p-4 md:p-8 max-w-3xl mx-auto pb-24">
-        <div className="flex items-center justify-between mb-6">
-          <Link 
-            href="/os" 
-            className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition-colors font-medium"
-          >
-            <ArrowLeft size={20} /> Voltar para O.S.
-          </Link>
-          <div className="flex gap-3">
-            <button 
-              onClick={handlePrint}
-              className="bg-blue-600 text-white px-4 py-2 rounded-xl flex items-center gap-2 hover:bg-blue-700 transition-all shadow-md shadow-blue-100 font-bold"
-            >
-              <Printer size={18} /> Imprimir O.S.
-            </button>
-            <button 
-              onClick={handleDeleteOS}
-              className="bg-red-50 text-red-600 px-4 py-2 rounded-xl flex items-center gap-2 hover:bg-red-100 transition-all font-bold border border-red-100"
-            >
-              <Trash2 size={18} /> Excluir
-            </button>
-          </div>
+      <div className="flex items-center justify-between mb-6">
+        <Link href="/os" className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition-colors font-medium">
+          <ArrowLeft size={20} /> Voltar para O.S.
+        </Link>
+        <div className="flex gap-3">
+          <button onClick={handlePrint} className="bg-blue-600 text-white px-4 py-2 rounded-xl flex items-center gap-2 hover:bg-blue-700 transition-all shadow-md shadow-blue-100 font-bold">
+            <Printer size={18} /> Imprimir O.S.
+          </button>
+          <button onClick={handleDeleteOS} className="bg-red-50 text-red-600 px-4 py-2 rounded-xl flex items-center gap-2 hover:bg-red-100 transition-all font-bold border border-red-100">
+            <Trash2 size={18} /> Excluir
+          </button>
         </div>
+      </div>
 
       <div className="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="bg-gray-900 text-white p-6">
@@ -132,16 +193,34 @@ export default function OSDetailPage() {
               <h1 className="text-2xl font-black uppercase tracking-tight">Ordem de Serviço</h1>
               <p className="text-gray-400 text-sm font-mono">{osData.os_number ? `Nº ${osData.os_number}` : `# ${osData.id.slice(0, 8)}`}</p>
             </div>
-            <div className={`px-3 py-1 rounded-full text-xs font-bold uppercase ${
-              osData.status === 'Ready' ? 'bg-yellow-500 text-white' : 
-              osData.status === 'Delivered' ? 'bg-green-500 text-white' : 'bg-blue-500 text-white'
-            }`}>
-              {osData.status.replace('_', ' ')}
+            <div className="relative">
+              <button
+                onClick={() => setShowStatusMenu(!showStatusMenu)}
+                className={`px-3 py-1.5 rounded-full text-xs font-bold uppercase flex items-center gap-1.5 ${currentStatus.color} hover:opacity-80 transition-opacity`}
+              >
+                {currentStatus.label}
+                <ChevronDown size={14} />
+              </button>
+              {showStatusMenu && (
+                <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg z-50 min-w-[160px] overflow-hidden">
+                  {STATUS_OPTIONS.map(opt => (
+                    <button
+                      key={opt.value}
+                      disabled={updatingStatus}
+                      onClick={() => handleChangeStatus(opt.value)}
+                      className={`w-full text-left px-4 py-2.5 text-xs font-bold uppercase flex items-center gap-2 hover:bg-gray-50 transition-colors disabled:opacity-50 ${osData.status === opt.value ? 'bg-blue-50 text-blue-600' : 'text-gray-700'}`}
+                    >
+                      <span className={`w-2 h-2 rounded-full ${opt.color.split(' ')[0]}`} />
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>
 
-        <div className="p-6 space-y-8">
+        <div className="p-6 space-y-6">
           <section className="space-y-3">
             <h2 className="text-sm font-bold text-gray-400 uppercase flex items-center gap-2">
               <User size={16} /> Dados do Cliente
@@ -237,9 +316,66 @@ export default function OSDetailPage() {
               </div>
             </div>
           </section>
+
+          {/* SEÇÃO FINANCEIRA */}
+          {financialRecords.length > 0 && (
+            <section className="space-y-3">
+              <h2 className="text-sm font-bold text-gray-400 uppercase flex items-center gap-2">
+                <DollarSign size={16} /> Financeiro
+              </h2>
+              <div className="bg-gray-50 p-4 rounded-2xl border border-gray-100 space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="bg-green-50 p-3 rounded-xl border border-green-100">
+                    <p className="text-[10px] font-bold text-green-600 uppercase">Recebido</p>
+                    <p className="text-lg font-black text-green-700">{formatCurrency(totalIncome)}</p>
+                  </div>
+                  <div className="bg-yellow-50 p-3 rounded-xl border border-yellow-100">
+                    <p className="text-[10px] font-bold text-yellow-600 uppercase">A Receber</p>
+                    <p className="text-lg font-black text-yellow-700">{formatCurrency(totalPending)}</p>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  {financialRecords.map((rec) => (
+                    <div key={rec.id} className="flex items-center justify-between bg-white p-3 rounded-xl border border-gray-100">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className={`p-1.5 rounded-full flex-shrink-0 ${rec.type === 'Income' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
+                          <DollarSign size={14} />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-gray-800 truncate">{rec.description}</p>
+                          <p className="text-[10px] text-gray-400">Vence: {new Date(rec.due_date).toLocaleDateString('pt-BR')}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                        <p className={`font-bold text-sm ${rec.type === 'Income' ? 'text-green-600' : 'text-red-600'}`}>
+                          {rec.type === 'Income' ? '' : '-'}{formatCurrency(rec.amount)}
+                        </p>
+                        {rec.status === 'Paid' ? (
+                          <span className="text-[10px] font-bold uppercase text-blue-500 bg-blue-50 px-1.5 py-0.5 rounded">Pago</span>
+                        ) : (
+                          <span className="text-[10px] font-bold uppercase text-orange-500 bg-orange-50 px-1.5 py-0.5 rounded">Pendente</span>
+                        )}
+                        {rec.status === 'Pending' && rec.type === 'Income' && rec.description.includes('(Entrada)') && (
+                          <button
+                            onClick={() => handleReceiveEntry(rec.id)}
+                            className="text-green-500 hover:text-green-700 p-1 rounded-lg hover:bg-green-50 transition-colors"
+                            title="Receber entrada"
+                          >
+                            <CheckCircle size={18} />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </section>
+          )}
         </div>
       </div>
 
+      {/* ÁREA DE IMPRESSÃO */}
       <div style={{ display: 'none' }}>
         <div ref={printAreaRef} className="p-8 text-black font-mono text-sm bg-white w-[80mm]">
           <div className="text-center border-b-2 border-black pb-4 mb-4">
