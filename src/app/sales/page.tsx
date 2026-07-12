@@ -290,7 +290,7 @@ export default function SalesPage() {
 
        // Cartão: recebimento integral + taxa automática
        if (selectedMethod?.is_card) {
-         const totalFinal = entrada > 0 ? entrada : totalVal;
+         const totalFinal = totalVal;
          const instForFee = Math.max(parseInt(payment.installments) || 1, 1);
          const feePerc = ((selectedMethod.fee_by_installment?.[instForFee] ?? selectedMethod.fee_percent) || 0) / 100;
          const feeAmount = Math.round(totalFinal * feePerc * 100) / 100;
