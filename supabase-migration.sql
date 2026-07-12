@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS cash_closing (
 
 ALTER TABLE cash_closing ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Cash closing access by shop" ON cash_closing;
 CREATE POLICY "Cash closing access by shop" ON cash_closing
     FOR ALL USING (shop_id = get_my_shop_id());
 
@@ -44,32 +45,45 @@ CREATE TABLE IF NOT EXISTS payment_methods (
     created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- 3b. Coluna fee_by_installment (JSONB) para taxas por parcela em cartões
+ALTER TABLE payment_methods
+ADD COLUMN IF NOT EXISTS fee_by_installment JSONB DEFAULT NULL;
+
 ALTER TABLE payment_methods ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Payment methods access by shop" ON payment_methods;
 CREATE POLICY "Payment methods access by shop" ON payment_methods
     FOR ALL USING (shop_id = get_my_shop_id());
 
 -- Seed: métodos padrão para cada loja existente
-INSERT INTO payment_methods (shop_id, name, fee_percent, max_installments, is_card, active)
-SELECT id, 'Pix', 0, 1, false, true FROM shops
+INSERT INTO payment_methods (shop_id, name, fee_percent, max_installments, is_card, active, fee_by_installment)
+SELECT id, 'Pix', 0, 1, false, true, NULL FROM shops
 WHERE NOT EXISTS (SELECT 1 FROM payment_methods WHERE payment_methods.shop_id = shops.id);
 
-INSERT INTO payment_methods (shop_id, name, fee_percent, max_installments, is_card, active)
-SELECT id, 'Dinheiro', 0, 1, false, true FROM shops
+INSERT INTO payment_methods (shop_id, name, fee_percent, max_installments, is_card, active, fee_by_installment)
+SELECT id, 'Dinheiro', 0, 1, false, true, NULL FROM shops
 WHERE NOT EXISTS (SELECT 1 FROM payment_methods WHERE payment_methods.shop_id = shops.id AND name = 'Dinheiro');
 
-INSERT INTO payment_methods (shop_id, name, fee_percent, max_installments, is_card, active)
-SELECT id, 'Cartão de Débito', 1.99, 1, true, true FROM shops
+INSERT INTO payment_methods (shop_id, name, fee_percent, max_installments, is_card, active, fee_by_installment)
+SELECT id, 'Cartão de Débito', 1.99, 1, true, true, '{"1":1.99}'::jsonb FROM shops
 WHERE NOT EXISTS (SELECT 1 FROM payment_methods WHERE payment_methods.shop_id = shops.id AND name = 'Cartão de Débito');
 
-INSERT INTO payment_methods (shop_id, name, fee_percent, max_installments, is_card, active)
-SELECT id, 'Cartão de Crédito', 3.99, 12, true, true FROM shops
+INSERT INTO payment_methods (shop_id, name, fee_percent, max_installments, is_card, active, fee_by_installment)
+SELECT id, 'Cartão de Crédito', 3.99, 12, true, true,
+  '{"1":2.99,"2":3.49,"3":3.99,"4":4.49,"5":4.99,"6":5.49,"7":5.99,"8":6.49,"9":6.99,"10":7.49,"11":7.99,"12":8.49}'::jsonb
+FROM shops
 WHERE NOT EXISTS (SELECT 1 FROM payment_methods WHERE payment_methods.shop_id = shops.id AND name = 'Cartão de Crédito');
 
-INSERT INTO payment_methods (shop_id, name, fee_percent, max_installments, is_card, active)
-SELECT id, 'Boleto Bancário', 0, 1, false, true FROM shops
+INSERT INTO payment_methods (shop_id, name, fee_percent, max_installments, is_card, active, fee_by_installment)
+SELECT id, 'Boleto Bancário', 0, 1, false, true, NULL FROM shops
 WHERE NOT EXISTS (SELECT 1 FROM payment_methods WHERE payment_methods.shop_id = shops.id AND name = 'Boleto Bancário');
 
-INSERT INTO payment_methods (shop_id, name, fee_percent, max_installments, is_card, active)
-SELECT id, 'Carnê', 0, 12, false, true FROM shops
+INSERT INTO payment_methods (shop_id, name, fee_percent, max_installments, is_card, active, fee_by_installment)
+SELECT id, 'Carnê', 0, 12, false, true, NULL FROM shops
 WHERE NOT EXISTS (SELECT 1 FROM payment_methods WHERE payment_methods.shop_id = shops.id AND name = 'Carnê');
+
+-- 3c. Atualizar métodos cartão existentes que não têm fee_by_installment (upgrade)
+UPDATE payment_methods SET fee_by_installment = '{"1":1.99}'::jsonb WHERE name = 'Cartão de Débito' AND fee_by_installment IS NULL;
+UPDATE payment_methods SET
+  fee_by_installment = '{"1":2.99,"2":3.49,"3":3.99,"4":4.49,"5":4.99,"6":5.49,"7":5.99,"8":6.49,"9":6.99,"10":7.49,"11":7.99,"12":8.49}'::jsonb
+WHERE name = 'Cartão de Crédito' AND fee_by_installment IS NULL;

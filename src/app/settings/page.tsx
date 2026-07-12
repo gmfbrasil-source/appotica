@@ -9,7 +9,9 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
-  const [formData, setFormData] = useState({ name: '', fee_percent: '', max_installments: '1', is_card: false, active: true });
+  const [formData, setFormData] = useState<{ name: string; fee_percent: string; max_installments: string; is_card: boolean; active: boolean; fee_by_installment: Record<string, string> }>({
+    name: '', fee_percent: '', max_installments: '1', is_card: false, active: true, fee_by_installment: {}
+  });
 
   useEffect(() => {
     fetchMethods();
@@ -29,7 +31,13 @@ export default function SettingsPage() {
     const { data: profile } = await supabase.from('profiles').select('shop_id').single();
     if (!profile?.shop_id) return;
 
-    const payload = {
+    const feeByInst: Record<string, number> = {};
+    for (const [k, v] of Object.entries(formData.fee_by_installment)) {
+      const num = parseFloat(v);
+      if (!isNaN(num)) feeByInst[k] = num;
+    }
+
+    const payload: any = {
       shop_id: profile.shop_id,
       name: formData.name,
       fee_percent: parseFloat(formData.fee_percent) || 0,
@@ -37,6 +45,7 @@ export default function SettingsPage() {
       is_card: formData.is_card,
       active: formData.active,
     };
+    if (Object.keys(feeByInst).length > 0) payload.fee_by_installment = feeByInst;
 
     if (editingId) {
       await supabase.from('payment_methods').update(payload).eq('id', editingId);
@@ -46,18 +55,22 @@ export default function SettingsPage() {
 
     setEditingId(null);
     setShowForm(false);
-    setFormData({ name: '', fee_percent: '', max_installments: '1', is_card: false, active: true });
+    setFormData({ name: '', fee_percent: '', max_installments: '1', is_card: false, active: true, fee_by_installment: {} });
     fetchMethods();
   }
 
   function startEdit(method: any) {
     setEditingId(method.id);
+    const fb = method.fee_by_installment || {};
+    const feeByInst: Record<string, string> = {};
+    for (const [k, v] of Object.entries(fb)) feeByInst[k] = String(v);
     setFormData({
       name: method.name,
       fee_percent: String(method.fee_percent),
       max_installments: String(method.max_installments),
       is_card: method.is_card,
       active: method.active,
+      fee_by_installment: feeByInst,
     });
     setShowForm(true);
   }
@@ -78,7 +91,7 @@ export default function SettingsPage() {
           <h1 className="text-2xl font-extrabold text-gray-900">Configurações</h1>
         </div>
         <button
-          onClick={() => { setEditingId(null); setFormData({ name: '', fee_percent: '', max_installments: '1', is_card: false, active: true }); setShowForm(true); }}
+          onClick={() => { setEditingId(null); setFormData({ name: '', fee_percent: '', max_installments: '1', is_card: false, active: true, fee_by_installment: {} }); setShowForm(true); }}
           className="bg-blue-600 text-white p-2 rounded-full shadow-lg hover:bg-blue-700 transition-colors"
         >
           <Plus size={24} />
@@ -121,6 +134,34 @@ export default function SettingsPage() {
                   <span className="text-sm font-medium text-gray-700">Ativo</span>
                 </label>
               </div>
+
+              {formData.is_card && parseInt(formData.max_installments || '1') > 0 && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Taxas por Parcela (%)</label>
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                    {[...Array(parseInt(formData.max_installments) || 1)].map((_, i) => {
+                      const inst = i + 1;
+                      return (
+                        <div key={inst} className="flex items-center gap-1">
+                          <span className="text-[11px] text-gray-500 w-5 shrink-0">{inst}x</span>
+                          <input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            placeholder="0"
+                            className="w-full p-1.5 border border-gray-300 rounded-lg text-sm text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none"
+                            value={formData.fee_by_installment[String(inst)] ?? ''}
+                            onChange={(e) => setFormData({
+                              ...formData,
+                              fee_by_installment: { ...formData.fee_by_installment, [String(inst)]: e.target.value }
+                            })}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
               <button type="submit" className="w-full py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors">
                 Salvar
               </button>
@@ -143,8 +184,7 @@ export default function SettingsPage() {
                   <div>
                     <p className="font-bold text-gray-800">{m.name}</p>
                     <p className="text-xs text-gray-500">
-                      {m.is_card && `Taxa: ${m.fee_percent}% | `}
-                      {m.max_installments > 1 ? `Até ${m.max_installments}x` : 'À vista'}
+                      {m.is_card ? `Taxas: ${m.fee_by_installment ? `${Object.keys(m.fee_by_installment).length} faixas` : `${m.fee_percent}%`} | ${m.max_installments > 1 ? `Até ${m.max_installments}x` : 'À vista'}` : (m.max_installments > 1 ? `Até ${m.max_installments}x` : 'À vista')}
                       {!m.active && <span className="text-red-500 ml-2">Inativo</span>}
                     </p>
                   </div>

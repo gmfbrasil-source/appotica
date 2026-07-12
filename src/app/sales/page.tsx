@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
+import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { formatCurrency, companyInfo } from '@/lib/format';
 import { 
@@ -63,6 +64,7 @@ export default function SalesPage() {
   const [loading, setLoading] = useState(false);
   const [customers, setCustomers] = useState<any[]>([]);
   const [paymentMethods, setPaymentMethods] = useState<any[]>([]);
+  const [paymentMethodsError, setPaymentMethodsError] = useState(false);
   const [customerSearch, setCustomerSearch] = useState('');
   const [showCustomerSuggestions, setShowCustomerSuggestions] = useState(false);
   const [activeSection, setActiveSection] = useState(1);
@@ -141,14 +143,19 @@ export default function SalesPage() {
   async function fetchPaymentMethods() {
     const { data: profile } = await supabase.from('profiles').select('shop_id').single();
     if (!profile?.shop_id) return;
-    const { data } = await supabase.from('payment_methods').select('*').eq('shop_id', profile.shop_id).eq('active', true).order('name');
-    if (data && data.length > 0) {
-      setPaymentMethods(data);
-      setPayment(prev => ({ ...prev, method: data[0].id }));
+    const { data, error } = await supabase.from('payment_methods').select('*').eq('shop_id', profile.shop_id).eq('active', true).order('name');
+    if (error || !data || data.length === 0) {
+      setPaymentMethodsError(true);
+      setPaymentMethods([]);
+      return;
     }
+    setPaymentMethods(data);
+    setPayment(prev => ({ ...prev, method: data[0].id }));
   }
 
   const selectedMethod = paymentMethods.find(m => m.id === payment.method);
+  const instCountCard = selectedMethod?.is_card ? Math.max(parseInt(payment.installments) || 1, 1) : 1;
+  const effectiveFeePercent = selectedMethod?.fee_by_installment?.[instCountCard] ?? selectedMethod?.fee_percent ?? 0;
 
   async function fetchCustomers() {
     const { data, error } = await supabase
@@ -272,8 +279,9 @@ export default function SalesPage() {
        // Cartão: recebimento integral + taxa automática
        if (selectedMethod?.is_card) {
          const totalFinal = entrada > 0 ? entrada : totalVal;
-         const taxaPerc = (selectedMethod.fee_percent || 0) / 100;
-         const feeAmount = Math.round(totalFinal * taxaPerc * 100) / 100;
+         const instForFee = Math.max(parseInt(payment.installments) || 1, 1);
+         const feePerc = ((selectedMethod.fee_by_installment?.[instForFee] ?? selectedMethod.fee_percent) || 0) / 100;
+         const feeAmount = Math.round(totalFinal * feePerc * 100) / 100;
 
          financialInserts.push({
            shop_id: shopId, type: 'Income',
@@ -715,12 +723,16 @@ export default function SalesPage() {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Forma de Pagamento</label>
                 <select className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={payment.method} onChange={(e) => setPayment({...payment, method: e.target.value})}>
+                  {paymentMethods.length === 0 && <option value="">Selecione...</option>}
                   {paymentMethods.map(m => (
                     <option key={m.id} value={m.id}>{m.name}</option>
                   ))}
                 </select>
               {selectedMethod?.is_card && (
-                <p className="text-[10px] text-purple-600 mt-1">Taxa: {selectedMethod.fee_percent}% — recebimento integral</p>
+                <p className="text-[10px] text-purple-600 mt-1">Taxa {instCountCard}x: {effectiveFeePercent}% ({formatCurrency((parseFloat(saleDetails.total_value || '0') * effectiveFeePercent) / 100)}) — recebimento integral</p>
+              )}
+              {paymentMethodsError && (
+                <p className="text-[10px] text-yellow-600 mt-1">Nenhum método configurado. Vá em <Link href="/settings" className="underline font-bold">Config</Link>.</p>
               )}
             </div>
             <div>
@@ -729,23 +741,25 @@ export default function SalesPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Parcelas</label>
-              {selectedMethod?.is_card ? (
-                <div className="w-full p-2.5 bg-gray-100 border border-gray-200 rounded-xl text-gray-400 text-sm flex items-center">
-                  À vista (integral)
-                </div>
-              ) : (
-                <select className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={payment.installments} onChange={(e) => {
-                  setPayment({...payment, installments: e.target.value});
-                  if (parseInt(e.target.value) > 0) {
-                    setFirstDueDate(getLocalDate(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)));
-                  }
-                }}>
-                  <option value="0">0x (Só Entrada)</option>
-                  {[...Array(selectedMethod?.max_installments || 12)].map((_, i) => (
-                    <option key={i+1} value={i+1}>{i+1}x</option>
-                  ))}
-                </select>
-              )}
+              <select className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={payment.installments} onChange={(e) => {
+                setPayment({...payment, installments: e.target.value});
+                if (parseInt(e.target.value) > 0) {
+                  setFirstDueDate(getLocalDate(new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)));
+                }
+              }}>
+                {selectedMethod?.is_card ? (
+                  [...Array(selectedMethod.max_installments || 1)].map((_, i) => (
+                    <option key={i+1} value={i+1}>{i+1}x (Taxa: {selectedMethod.fee_by_installment?.[i+1] ?? selectedMethod.fee_percent}%)</option>
+                  ))
+                ) : (
+                  <>
+                    <option value="0">0x (Só Entrada)</option>
+                    {[...Array(selectedMethod?.max_installments || 12)].map((_, i) => (
+                      <option key={i+1} value={i+1}>{i+1}x</option>
+                    ))}
+                  </>
+                )}
+              </select>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Status da Entrada</label>
@@ -754,7 +768,7 @@ export default function SalesPage() {
                 <option value="Pending">Receber na Entrega</option>
               </select>
               {selectedMethod?.is_card && (
-                <p className="text-[10px] text-gray-500 mt-1">Cartão: recebimento integral automático</p>
+                <p className="text-[10px] text-gray-500 mt-1">Cartão: recebimento integral + taxa de {effectiveFeePercent}%</p>
               )}
             </div>
           </div>
