@@ -9,12 +9,8 @@ const BACKUP_TABLES = [
   'prescriptions', 'financial_records', 'cash_closing'
 ] as const;
 
-function csvVal(val: any): string {
-  if (val === null || val === undefined) return '';
-  const s = String(val);
-  if (s.includes(',') || s.includes('"') || s.includes('\n') || s.includes('\r'))
-    return '"' + s.replace(/"/g, '""') + '"';
-  return s;
+function escHtml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 
 function parseCSVLine(line: string): string[] {
@@ -126,7 +122,7 @@ export default function SettingsPage() {
     return profile?.shop_id || null;
   }
 
-  // ─── EXPORT ──────────────────────────────────────────────
+  // ─── EXPORT (HTML/.xls) ──────────────────────────────────
 
   async function handleExport() {
     setExporting(true);
@@ -134,8 +130,26 @@ export default function SettingsPage() {
       const shop_id = await getShopId();
       if (!shop_id) { alert('Erro: loja não identificada.'); return; }
 
-      let csv = '# Backup de Dados - Estyllus Otica\n';
-      csv += `# Gerado em: ${new Date().toLocaleString('pt-BR')}\n\n`;
+      let html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+<style>
+  body { font-family: 'Segoe UI', Arial, sans-serif; padding: 20px; color: #333; }
+  h1 { color: #1e3a5f; font-size: 20px; margin: 0 0 4px 0; }
+  .sub { color: #888; font-size: 12px; margin-bottom: 20px; }
+  h2 { background: #e8f0fe; color: #1e3a5f; font-size: 14px; padding: 8px 12px;
+       border-radius: 4px; margin: 24px 0 8px 0; }
+  table { border-collapse: collapse; width: 100%; margin-bottom: 8px;
+          page-break-inside: avoid; }
+  th { background: #f0f4f8; color: #555; font-size: 11px; padding: 6px 8px;
+       text-align: left; border: 1px solid #dde3ed; white-space: nowrap; }
+  td { font-size: 11px; padding: 5px 8px; border: 1px solid #e5eaf0;
+       color: #333; }
+  tr:nth-child(even) { background: #fafbfc; }
+  .vazio { color: #aaa; font-style: italic; padding: 12px; }
+  .footer { margin-top: 30px; font-size: 10px; color: #bbb; text-align: center;
+            border-top: 1px solid #eee; padding-top: 12px; }
+</style></head><body>
+<h1>Backup de Dados</h1>
+<div class="sub">Estyllus Otica &mdash; Gerado em ${new Date().toLocaleString('pt-BR')}</div>\n`;
 
       for (const table of BACKUP_TABLES) {
         const { data, error } = await supabase
@@ -144,29 +158,40 @@ export default function SettingsPage() {
           .eq('shop_id', shop_id)
           .order('created_at', { ascending: true });
 
-        if (error) {
-          console.warn(`Erro ao exportar ${table}:`, error.message);
-          continue;
-        }
-        if (!data || data.length === 0) {
-          csv += `##### ${table}\n# (sem registros)\n\n`;
+        const labelMap: Record<string, string> = {
+          customers: 'Clientes', products: 'Produtos', payment_methods: 'Formas de Pagamento',
+          service_orders: 'Ordens de Servico', prescriptions: 'Prescricoes',
+          financial_records: 'Financeiro', cash_closing: 'Fechamentos de Caixa'
+        };
+
+        html += `<h2>${labelMap[table] || table}</h2>\n`;
+
+        if (error || !data || data.length === 0) {
+          html += `<p class="vazio">Nenhum registro.</p>\n`;
           continue;
         }
 
         const columns = Object.keys(data[0]);
-        csv += `##### ${table}\n`;
-        csv += columns.map(c => csvVal(c)).join(',') + '\n';
+        html += '<table><thead><tr>' + columns.map(c => `<th>${escHtml(c)}</th>`).join('') + '</tr></thead><tbody>\n';
+
         for (const row of data) {
-          csv += columns.map(c => csvVal(row[c])).join(',') + '\n';
+          html += '<tr>' + columns.map(c => {
+            let val = row[c];
+            if (val === null || val === undefined) val = '';
+            if (typeof val === 'object') val = JSON.stringify(val);
+            return `<td>${escHtml(String(val))}</td>`;
+          }).join('') + '</tr>\n';
         }
-        csv += '\n';
+        html += '</tbody></table>\n';
       }
 
-      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+      html += `<div class="footer">Backup gerado automaticamente pelo sistema.</div>\n</body></html>`;
+
+      const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `backup_estyllus_${new Date().toISOString().slice(0, 10)}.csv`;
+      a.download = `backup_estyllus_${new Date().toISOString().slice(0, 10)}.xls`;
       a.click();
       URL.revokeObjectURL(url);
     } catch (err: any) {
@@ -176,7 +201,7 @@ export default function SettingsPage() {
     }
   }
 
-  // ─── IMPORT ──────────────────────────────────────────────
+  // ─── IMPORT (HTML .xls ou CSV) ──────────────────────────
 
   async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -190,41 +215,75 @@ export default function SettingsPage() {
       const shop_id = await getShopId();
       if (!shop_id) { alert('Erro: loja não identificada.'); return; }
 
-      // Parse sections
-      const lines = text.split('\n');
-      const sections: Record<string, { columns: string[]; rows: string[][] }> = {};
-      let currentTable = '';
-      let currentColumns: string[] = [];
+      let sections: Record<string, { columns: string[]; rows: string[][] }> = {};
 
-      for (const rawLine of lines) {
-        const line = rawLine.trim();
-        if (line.startsWith('##### ')) {
-          currentTable = line.slice(6).trim();
-          sections[currentTable] = { columns: [], rows: [] };
-          currentColumns = [];
-        } else if (line.startsWith('#')) {
-          continue;
-        } else if (currentTable && line) {
-          const parsed = parseCSVLine(line);
-          if (currentColumns.length === 0) {
-            currentColumns = parsed;
-            sections[currentTable].columns = parsed;
-          } else {
-            if (parsed.length === currentColumns.length) {
-              sections[currentTable].rows.push(parsed);
+      // Detect format: HTML (.xls) or CSV
+      const isHtml = text.trim().startsWith('<') && (text.includes('<table') || text.includes('<html'));
+
+      if (isHtml) {
+        // Parse HTML tables
+        const tableRegex = /<h2[^>]*>(.*?)<\/h2>\s*<table[\s\S]*?<\/table>/gi;
+        let match;
+        while ((match = tableRegex.exec(text)) !== null) {
+          const tableName = match[1].trim().toLowerCase();
+          const tableHtml = match[0];
+
+          const tableMap: Record<string, string> = {
+            clientes: 'customers', produtos: 'products', 'formas de pagamento': 'payment_methods',
+            'ordens de servico': 'service_orders', prescricoes: 'prescriptions',
+            financeiro: 'financial_records', 'fechamentos de caixa': 'cash_closing'
+          };
+          const dbTable = tableMap[tableName] || tableName;
+
+          const ths = [...tableHtml.matchAll(/<th[^>]*>(.*?)<\/th>/gi)].map(m => m[1].trim());
+          const trs = [...tableHtml.matchAll(/<tbody[\s\S]*?<\/tbody>/gi)];
+          const rows: string[][] = [];
+          if (trs.length > 0) {
+            const cells = [...trs[0][0].matchAll(/<td[^>]*>(.*?)<\/td>/gi)];
+            let row: string[] = [];
+            for (const c of cells) {
+              row.push(c[1].trim());
+              if (row.length === ths.length) { rows.push(row); row = []; }
+            }
+            if (row.length > 0) rows.push(row);
+          }
+          sections[dbTable] = { columns: ths, rows };
+        }
+      } else {
+        // Parse CSV sections (existing logic)
+        const lines = text.split('\n');
+        let currentTable = '';
+        let currentColumns: string[] = [];
+
+        for (const rawLine of lines) {
+          const line = rawLine.trim();
+          if (line.startsWith('##### ')) {
+            currentTable = line.slice(6).trim();
+            sections[currentTable] = { columns: [], rows: [] };
+            currentColumns = [];
+          } else if (line.startsWith('#')) {
+            continue;
+          } else if (currentTable && line) {
+            const parsed = parseCSVLine(line);
+            if (currentColumns.length === 0) {
+              currentColumns = parsed;
+              sections[currentTable].columns = parsed;
+            } else {
+              if (parsed.length === currentColumns.length) {
+                sections[currentTable].rows.push(parsed);
+              }
             }
           }
         }
       }
 
-      // Validation
       const foundTables = Object.keys(sections);
       if (foundTables.length === 0) {
         setImportResult('Nenhuma seção de dados encontrada no arquivo.');
         return;
       }
 
-      // Import order: parents first, then dependents
+      // Import order
       const order: string[] = [
         'customers', 'products', 'payment_methods',
         'service_orders', 'prescriptions',
@@ -241,13 +300,12 @@ export default function SettingsPage() {
         const rows = section.rows.map(row => {
           const obj: any = { shop_id };
           section.columns.forEach((col, i) => {
-            if (col === 'shop_id') { obj[col] = shop_id; }
+            if (col.toLowerCase() === 'shop_id') { obj[col] = shop_id; }
             else { obj[col] = row[i] ?? null; }
           });
           return obj;
         });
 
-        // Upsert in batches of 50
         for (let i = 0; i < rows.length; i += 50) {
           const batch = rows.slice(i, i + 50);
           const { error } = await supabase.from(table).upsert(batch, { onConflict: 'id' });
@@ -403,7 +461,7 @@ export default function SettingsPage() {
           <h2 className="text-xl font-extrabold text-gray-900">Backup de Dados</h2>
         </div>
         <p className="text-sm text-gray-500 mb-6">
-          Exporte todos os dados da sua loja em formato CSV (abre no Excel) ou importe uma planilha para atualizações em massa.
+          Exporte ou importe os dados da sua loja em formato .xls (Excel) ou .csv.
         </p>
 
         <div className="flex flex-wrap gap-4">
@@ -419,7 +477,7 @@ export default function SettingsPage() {
           <label className={`flex items-center gap-2 px-5 py-3 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 transition-colors cursor-pointer ${importing ? 'opacity-50 cursor-not-allowed' : ''}`}>
             {importing ? <Loader2 size={18} className="animate-spin" /> : <Upload size={18} />}
             {importing ? 'Importando...' : 'Importar Planilha'}
-            <input type="file" accept=".csv" onChange={handleImport} disabled={importing} className="hidden" />
+            <input type="file" accept=".csv,.xls" onChange={handleImport} disabled={importing} className="hidden" />
           </label>
         </div>
 
@@ -438,15 +496,15 @@ export default function SettingsPage() {
             Como usar o backup
           </summary>
           <div className="mt-3 text-sm text-gray-600 space-y-2 bg-gray-50 rounded-xl p-4">
-            <p><strong>Exportar:</strong> Gera um arquivo .csv com todos os dados da sua loja. Abra no Excel ou Google Sheets para visualizar.</p>
+            <p><strong>Exportar:</strong> Gera um arquivo .xls com todos os dados organizados em tabelas. Abra no Excel ou Google Sheets.</p>
             <p><strong>Importar (edição em massa):</strong></p>
             <ol className="list-decimal list-inside space-y-1 ml-2">
-              <li>Exporte os dados primeiro</li>
-              <li>Abra o .csv no Excel e faça as alterações desejadas</li>
-              <li>Salve como .csv (mantendo a estrutura das colunas)</li>
-              <li>Importe o arquivo de volta — o sistema atualizará os registros existentes e criará novos</li>
+              <li>Exporte os dados primeiro (.xls)</li>
+              <li>Abra no Excel, faça as alterações desejadas</li>
+              <li>No Excel: <strong>Arquivo &gt; Salvar como &gt; CSV (UTF-8) (.csv)</strong></li>
+              <li>Importe o .csv de volta — o sistema atualizará os registros existentes e criará novos</li>
             </ol>
-            <p className="text-xs text-amber-600 mt-2">Importante: não renomeie as colunas nem remova o cabeçalho `##### nomedatabela` de cada seção.</p>
+            <p className="text-xs text-amber-600 mt-2">Importante: mantenha a primeira linha (cabeçalho das colunas) inalterada.</p>
           </div>
         </details>
       </div>
