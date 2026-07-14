@@ -146,16 +146,7 @@ export default function SalesPage() {
   const [editOrderId, setEditOrderId] = useState<string | null>(null);
   const [loadingEdit, setLoadingEdit] = useState(false);
 
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const edit = params.get('edit');
-    if (edit) {
-      setEditOrderId(edit);
-      loadForEdit(edit);
-    }
-  }, []);
-
-  async function loadForEdit(orderId: string) {
+  async function loadForEdit(orderId: string, methods?: any[]) {
     setLoadingEdit(true);
     try {
       const { data: os, error } = await supabase
@@ -178,6 +169,8 @@ export default function SalesPage() {
         if (lensesMatch && lenses === 'Não informada') lenses = '';
         if (notesMatch && notes === 'Nenhuma') notes = '';
       }
+      if (frame === 'Não informada') frame = '';
+      if (lenses === 'Não informada') lenses = '';
 
       // Set customer
       if (os.customers) {
@@ -200,22 +193,22 @@ export default function SalesPage() {
         altura: String(os.altura ?? '')
       });
 
-      // Set OS number
+      // Set OS number e opções
       setOsNumber(os.os_number || '');
-
-      // Set geraOS (it was generated, so keep true)
       setGeraOS(true);
+      setEntregueAgora(os.status === 'Delivered');
 
       // Fetch latest prescription for this customer
-      const { data: presc } = await supabase
+      let hasPresc = false;
+      const { data: presc, error: prescErr } = await supabase
         .from('prescriptions')
         .select('*')
         .eq('customer_id', os.customer_id)
         .order('created_at', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
 
-      if (presc) {
+      if (presc && !prescErr) {
         setPrescription({
           oe_sphere: presc.oe_sphere != null ? String(presc.oe_sphere) : '',
           oe_cylinder: presc.oe_cylinder != null ? String(presc.oe_cylinder) : '',
@@ -227,10 +220,11 @@ export default function SalesPage() {
           dp: presc.dp != null ? String(presc.dp) : '',
           notes: presc.notes || ''
         });
-        setIsSunglasses(false);
+        hasPresc = true;
       }
+      setIsSunglasses(!hasPresc);
 
-      // Fetch financial records to guess payment
+      // Fetch financial records to restore payment data
       const { data: fins } = await supabase
         .from('financial_records')
         .select('*')
@@ -239,25 +233,42 @@ export default function SalesPage() {
 
       if (fins && fins.length > 0) {
         const incomeRecords = fins.filter((f: any) => f.type === 'Income');
-        const entryRecord = incomeRecords.find((f: any) => f.description.includes('Entrada'));
-        const instRecords = incomeRecords.filter((f: any) => f.description.includes('- '));
-        const hasCardRecord = incomeRecords.some((f: any) => {
-          const method = paymentMethods.find(m => f.description.includes(m.name));
-          return method?.is_card;
+        const instRecords = incomeRecords.filter((f: any) => f.description.match(/- \d{2}\/\d{2}$/));
+        const entryRecord = incomeRecords.find((f: any) => f.description.includes('(Entrada)'));
+        const vistaRecord = incomeRecords.find((f: any) => f.description.includes('(À Vista)'));
+
+        // Find payment method by matching description with method names
+        const availMethods = methods || paymentMethods;
+        let matchedMethodId = '';
+        for (const m of availMethods) {
+          if (incomeRecords.some((f: any) => f.description.includes(m.name))) {
+            matchedMethodId = m.id;
+            break;
+          }
+        }
+
+        // Determine if was card payment: check for fee records
+        const hasFeeRecord = fins.some((f: any) => f.type === 'Expense' && f.description.startsWith('Taxa'));
+
+        const instCount = instRecords.length;
+        const entryAmount = entryRecord ? entryRecord.amount : 0;
+        const hasPending = fins.some((f: any) => f.status === 'Pending');
+
+        setPayment({
+          method: matchedMethodId || payment.method,
+          downPayment: entryAmount > 0 ? String(entryAmount) : '0',
+          installments: String(hasFeeRecord ? 1 : (instCount || 1)),
+          status: hasPending ? 'Pending' : 'Paid'
         });
 
-        if (hasCardRecord) {
-          setPayment(prev => ({ ...prev, installments: String(instRecords.length || 1), downPayment: '0' }));
-        } else {
-          const instCount = instRecords.length || 0;
-          const entryAmount = entryRecord ? entryRecord.amount : 0;
-          setPayment(prev => ({
-            ...prev,
-            downPayment: entryAmount > 0 ? String(entryAmount) : '0',
-            installments: String(instCount || 1),
-            status: fins.some((f: any) => f.status === 'Pending') ? 'Pending' : 'Paid'
-          }));
+        // Set first due date from the first installment or entry
+        if (instRecords.length > 0 && instRecords[0].due_date) {
+          setFirstDueDate(instRecords[0].due_date);
+        } else if (entryRecord?.due_date) {
+          setFirstDueDate(entryRecord.due_date);
         }
+      } else {
+        setPayment(prev => ({ ...prev, method: (methods || paymentMethods)[0]?.id || '' }));
       }
 
       setActiveSection(1);
@@ -269,21 +280,29 @@ export default function SalesPage() {
   }
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const edit = params.get('edit');
     fetchCustomers();
-    fetchPaymentMethods();
+    if (edit) {
+      setEditOrderId(edit);
+      fetchPaymentMethods().then(methods => loadForEdit(edit, methods));
+    } else {
+      fetchPaymentMethods();
+    }
   }, []);
 
-  async function fetchPaymentMethods() {
+  async function fetchPaymentMethods(): Promise<any[]> {
     const { data: profile } = await supabase.from('profiles').select('shop_id').single();
-    if (!profile?.shop_id) return;
+    if (!profile?.shop_id) return [];
     const { data, error } = await supabase.from('payment_methods').select('*').eq('shop_id', profile.shop_id).eq('active', true).order('name');
     if (error || !data || data.length === 0) {
       setPaymentMethodsError(true);
       setPaymentMethods([]);
-      return;
+      return [];
     }
     setPaymentMethods(data);
-    setPayment(prev => ({ ...prev, method: data[0].id }));
+    if (!editOrderId) setPayment(prev => ({ ...prev, method: data[0].id }));
+    return data;
   }
 
   const selectedMethod = paymentMethods.find(m => m.id === payment.method);
