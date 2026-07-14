@@ -1,6 +1,5 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
-import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { formatCurrency, companyInfo } from '@/lib/format';
@@ -144,15 +143,17 @@ export default function SalesPage() {
   const [showPrintModal, setShowPrintModal] = useState(false);
 
   // Edição de venda existente
-  const searchParams = useSearchParams();
-  const editOrderId = searchParams.get('edit');
+  const [editOrderId, setEditOrderId] = useState<string | null>(null);
   const [loadingEdit, setLoadingEdit] = useState(false);
 
   useEffect(() => {
-    if (editOrderId) {
-      loadForEdit(editOrderId);
+    const params = new URLSearchParams(window.location.search);
+    const edit = params.get('edit');
+    if (edit) {
+      setEditOrderId(edit);
+      loadForEdit(edit);
     }
-  }, [editOrderId]);
+  }, []);
 
   async function loadForEdit(orderId: string) {
     setLoadingEdit(true);
@@ -621,6 +622,11 @@ export default function SalesPage() {
       <header className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">{editOrderId ? 'Editando Venda' : 'Nova Venda'}</h1>
         <p className="text-sm text-gray-500">{editOrderId ? 'Altere os dados necessários e salve as alterações.' : 'Preencha cada etapa para criar a venda completa.'}</p>
+        {loadingEdit && (
+          <div className="mt-3 flex items-center gap-2 text-sm text-blue-600 bg-blue-50 p-3 rounded-xl">
+            <Loader2 className="animate-spin" size={16} /> Carregando dados da venda...
+          </div>
+        )}
       </header>
 
       <form onSubmit={handleCreateSale} className="space-y-3">

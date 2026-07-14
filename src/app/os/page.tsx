@@ -213,10 +213,10 @@ export default function OSPage() {
             >
               <button
                 onClick={(e) => { e.stopPropagation(); router.push(`/sales?edit=${order.id}`); }}
-                className="absolute top-3 right-3 text-gray-400 hover:text-blue-600 p-1.5 rounded-lg hover:bg-gray-50 transition-colors"
+                className="absolute top-2 right-2 bg-white border border-gray-200 text-blue-600 hover:text-blue-800 p-1.5 rounded-lg hover:bg-blue-50 transition-colors shadow-sm z-10"
                 title="Editar venda"
               >
-                <Pencil size={16} />
+                <Pencil size={15} />
               </button>
               <div className="flex justify-between items-start mb-2">
                 <div>
