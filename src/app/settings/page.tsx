@@ -1,8 +1,43 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { ArrowLeft, CreditCard, Loader2, Plus, Check, X, Pencil, Trash2 } from 'lucide-react';
+import { ArrowLeft, CreditCard, Loader2, Plus, Check, X, Pencil, Trash2, Download, Upload, FileSpreadsheet } from 'lucide-react';
 import Link from 'next/link';
+
+const BACKUP_TABLES = [
+  'customers', 'products', 'payment_methods', 'service_orders',
+  'prescriptions', 'financial_records', 'cash_closing'
+] as const;
+
+function csvVal(val: any): string {
+  if (val === null || val === undefined) return '';
+  const s = String(val);
+  if (s.includes(',') || s.includes('"') || s.includes('\n') || s.includes('\r'))
+    return '"' + s.replace(/"/g, '""') + '"';
+  return s;
+}
+
+function parseCSVLine(line: string): string[] {
+  const result: string[] = [];
+  let i = 0, current = '';
+  let inQuotes = false;
+  while (i < line.length) {
+    const ch = line[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (i + 1 < line.length && line[i + 1] === '"') { current += '"'; i += 2; }
+        else { inQuotes = false; i++; }
+      } else { current += ch; i++; }
+    } else {
+      if (ch === ',') { result.push(current); current = ''; i++; }
+      else if (ch === '"') { inQuotes = true; i++; }
+      else if (ch === '\r') { i++; }
+      else { current += ch; i++; }
+    }
+  }
+  result.push(current);
+  return result;
+}
 
 export default function SettingsPage() {
   const [methods, setMethods] = useState<any[]>([]);
@@ -12,6 +47,11 @@ export default function SettingsPage() {
   const [formData, setFormData] = useState<{ name: string; fee_percent: string; max_installments: string; is_card: boolean; active: boolean; fee_by_installment: Record<string, string> }>({
     name: '', fee_percent: '', max_installments: '1', is_card: false, active: true, fee_by_installment: {}
   });
+
+  // Backup states
+  const [exporting, setExporting] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<string | null>(null);
 
   useEffect(() => {
     fetchMethods();
@@ -79,6 +119,158 @@ export default function SettingsPage() {
     if (!confirm('Excluir este método de pagamento?')) return;
     await supabase.from('payment_methods').delete().eq('id', id);
     fetchMethods();
+  }
+
+  async function getShopId(): Promise<string | null> {
+    const { data: profile } = await supabase.from('profiles').select('shop_id').single();
+    return profile?.shop_id || null;
+  }
+
+  // ─── EXPORT ──────────────────────────────────────────────
+
+  async function handleExport() {
+    setExporting(true);
+    try {
+      const shop_id = await getShopId();
+      if (!shop_id) { alert('Erro: loja não identificada.'); return; }
+
+      let csv = '# Backup de Dados - Estyllus Otica\n';
+      csv += `# Gerado em: ${new Date().toLocaleString('pt-BR')}\n\n`;
+
+      for (const table of BACKUP_TABLES) {
+        const { data, error } = await supabase
+          .from(table)
+          .select('*')
+          .eq('shop_id', shop_id)
+          .order('created_at', { ascending: true });
+
+        if (error) {
+          console.warn(`Erro ao exportar ${table}:`, error.message);
+          continue;
+        }
+        if (!data || data.length === 0) {
+          csv += `##### ${table}\n# (sem registros)\n\n`;
+          continue;
+        }
+
+        const columns = Object.keys(data[0]);
+        csv += `##### ${table}\n`;
+        csv += columns.map(c => csvVal(c)).join(',') + '\n';
+        for (const row of data) {
+          csv += columns.map(c => csvVal(row[c])).join(',') + '\n';
+        }
+        csv += '\n';
+      }
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `backup_estyllus_${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      alert('Erro ao exportar: ' + err.message);
+    } finally {
+      setExporting(false);
+    }
+  }
+
+  // ─── IMPORT ──────────────────────────────────────────────
+
+  async function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setImporting(true);
+    setImportResult(null);
+
+    try {
+      const text = await file.text();
+      const shop_id = await getShopId();
+      if (!shop_id) { alert('Erro: loja não identificada.'); return; }
+
+      // Parse sections
+      const lines = text.split('\n');
+      const sections: Record<string, { columns: string[]; rows: string[][] }> = {};
+      let currentTable = '';
+      let currentColumns: string[] = [];
+
+      for (const rawLine of lines) {
+        const line = rawLine.trim();
+        if (line.startsWith('##### ')) {
+          currentTable = line.slice(6).trim();
+          sections[currentTable] = { columns: [], rows: [] };
+          currentColumns = [];
+        } else if (line.startsWith('#')) {
+          continue;
+        } else if (currentTable && line) {
+          const parsed = parseCSVLine(line);
+          if (currentColumns.length === 0) {
+            currentColumns = parsed;
+            sections[currentTable].columns = parsed;
+          } else {
+            if (parsed.length === currentColumns.length) {
+              sections[currentTable].rows.push(parsed);
+            }
+          }
+        }
+      }
+
+      // Validation
+      const foundTables = Object.keys(sections);
+      if (foundTables.length === 0) {
+        setImportResult('Nenhuma seção de dados encontrada no arquivo.');
+        return;
+      }
+
+      // Import order: parents first, then dependents
+      const order: string[] = [
+        'customers', 'products', 'payment_methods',
+        'service_orders', 'prescriptions',
+        'financial_records', 'cash_closing'
+      ];
+
+      let totalImported = 0;
+      const errors: string[] = [];
+
+      for (const table of order) {
+        const section = sections[table];
+        if (!section || section.rows.length === 0) continue;
+
+        const rows = section.rows.map(row => {
+          const obj: any = { shop_id };
+          section.columns.forEach((col, i) => {
+            if (col === 'shop_id') { obj[col] = shop_id; }
+            else { obj[col] = row[i] ?? null; }
+          });
+          return obj;
+        });
+
+        // Upsert in batches of 50
+        for (let i = 0; i < rows.length; i += 50) {
+          const batch = rows.slice(i, i + 50);
+          const { error } = await supabase.from(table).upsert(batch, { onConflict: 'id' });
+          if (error) {
+            errors.push(`${table} (lote ${Math.floor(i / 50) + 1}): ${error.message}`);
+          } else {
+            totalImported += batch.length;
+          }
+        }
+      }
+
+      let resultMsg = `${totalImported} registro(s) importados com sucesso.`;
+      if (errors.length > 0) {
+        resultMsg += `\n\n${errors.length} erro(s):\n` + errors.join('\n');
+      }
+      setImportResult(resultMsg);
+      fetchMethods();
+    } catch (err: any) {
+      setImportResult('Erro ao importar: ' + err.message);
+    } finally {
+      setImporting(false);
+      e.target.value = '';
+    }
   }
 
   return (
@@ -203,6 +395,61 @@ export default function SettingsPage() {
           {methods.length === 0 && <p className="text-center text-gray-500 py-10">Nenhum método de pagamento cadastrado.</p>}
         </div>
       )}
+
+      {/* ─── BACKUP DE DADOS ──────────────────────────────── */}
+      <div className="mt-10 pt-8 border-t border-gray-200">
+        <div className="flex items-center gap-3 mb-2">
+          <FileSpreadsheet size={22} className="text-blue-600" />
+          <h2 className="text-xl font-extrabold text-gray-900">Backup de Dados</h2>
+        </div>
+        <p className="text-sm text-gray-500 mb-6">
+          Exporte todos os dados da sua loja em formato CSV (abre no Excel) ou importe uma planilha para atualizações em massa.
+        </p>
+
+        <div className="flex flex-wrap gap-4">
+          <button
+            onClick={handleExport}
+            disabled={exporting}
+            className="flex items-center gap-2 px-5 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {exporting ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />}
+            {exporting ? 'Exportando...' : 'Exportar Dados'}
+          </button>
+
+          <label className={`flex items-center gap-2 px-5 py-3 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 transition-colors cursor-pointer ${importing ? 'opacity-50 cursor-not-allowed' : ''}`}>
+            {importing ? <Loader2 size={18} className="animate-spin" /> : <Upload size={18} />}
+            {importing ? 'Importando...' : 'Importar Planilha'}
+            <input type="file" accept=".csv" onChange={handleImport} disabled={importing} className="hidden" />
+          </label>
+        </div>
+
+        {importResult && (
+          <div className={`mt-4 p-4 rounded-xl text-sm whitespace-pre-line ${
+            importResult.includes('Erro') || importResult.includes('erro')
+              ? 'bg-red-50 text-red-700 border border-red-100'
+              : 'bg-green-50 text-green-700 border border-green-100'
+          }`}>
+            {importResult}
+          </div>
+        )}
+
+        <details className="mt-6">
+          <summary className="text-sm text-gray-500 cursor-pointer hover:text-gray-700 font-medium">
+            Como usar o backup
+          </summary>
+          <div className="mt-3 text-sm text-gray-600 space-y-2 bg-gray-50 rounded-xl p-4">
+            <p><strong>Exportar:</strong> Gera um arquivo .csv com todos os dados da sua loja. Abra no Excel ou Google Sheets para visualizar.</p>
+            <p><strong>Importar (edição em massa):</strong></p>
+            <ol className="list-decimal list-inside space-y-1 ml-2">
+              <li>Exporte os dados primeiro</li>
+              <li>Abra o .csv no Excel e faça as alterações desejadas</li>
+              <li>Salve como .csv (mantendo a estrutura das colunas)</li>
+              <li>Importe o arquivo de volta — o sistema atualizará os registros existentes e criará novos</li>
+            </ol>
+            <p className="text-xs text-amber-600 mt-2">Importante: não renomeie as colunas nem remova o cabeçalho `##### nomedatabela` de cada seção.</p>
+          </div>
+        </details>
+      </div>
     </div>
   );
 }
