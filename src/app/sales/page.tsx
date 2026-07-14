@@ -285,7 +285,7 @@ export default function SalesPage() {
        const entrada = Math.min(parseFloat(payment.downPayment) || 0, totalVal);
        const restante = Math.round((totalVal - entrada) * 100) / 100;
        const instCount = Math.max(parseInt(payment.installments) || 0, 0);
-       const descPrefix = osData?.os_number ? `Venda O.S. ${osData.os_number}` : 'Venda';
+       const osPrefix = osData?.os_number ? `OS ${osData.os_number}` : 'Venda';
 
        // Cartão: recebimento integral + taxa automática
        if (selectedMethod?.is_card) {
@@ -296,7 +296,7 @@ export default function SalesPage() {
 
          financialInserts.push({
            shop_id: shopId, type: 'Income',
-           description: `${descPrefix} (${selectedMethod.name})`,
+            description: `${osPrefix} (${selectedMethod.name})`,
            amount: totalFinal,
            due_date: hojeStr,
            payment_date: hojeStr,
@@ -308,7 +308,7 @@ export default function SalesPage() {
          if (feeAmount > 0) {
            financialInserts.push({
              shop_id: shopId, type: 'Expense',
-             description: `Taxa ${selectedMethod.name} - ${descPrefix}`,
+              description: `Taxa ${selectedMethod.name} - ${osPrefix}`,
              amount: feeAmount,
              due_date: hojeStr,
              payment_date: hojeStr,
@@ -324,7 +324,7 @@ export default function SalesPage() {
            const entryDue = instCount > 0 ? new Date(firstDueDate) : hoje;
            financialInserts.push({
              shop_id: shopId, type: 'Income',
-             description: `${descPrefix} (Entrada)`,
+              description: `${osPrefix} (Entrada)`,
              amount: entrada,
              due_date: getLocalDate(entryDue),
              payment_date: payment.status === 'Paid' ? hojeStr : null,
@@ -345,7 +345,7 @@ export default function SalesPage() {
              due.setDate(due.getDate() + i * 30);
              financialInserts.push({
                shop_id: shopId, type: 'Income',
-               description: `${descPrefix} (Parc. ${i+1}/${instCount})`,
+                description: `${osPrefix} - ${String(i+1).padStart(2, '0')}/${String(instCount).padStart(2, '0')}`,
                amount: valorParcela,
                due_date: getLocalDate(due),
                payment_date: null,
@@ -360,7 +360,7 @@ export default function SalesPage() {
          if (entrada === 0 && instCount === 0) {
            financialInserts.push({
              shop_id: shopId, type: 'Income',
-             description: `${descPrefix} (À Vista)`,
+              description: `${osPrefix} (À Vista)`,
              amount: totalVal,
              due_date: hojeStr,
              payment_date: payment.status === 'Paid' ? hojeStr : null,
