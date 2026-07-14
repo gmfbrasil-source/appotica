@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { formatCurrency } from '@/lib/format';
-import { Plus, Package, Truck, CheckCircle, Clock } from 'lucide-react';
+import { Plus, Package, Truck, CheckCircle, Clock, Pencil } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
 export default function OSPage() {
@@ -209,8 +209,15 @@ export default function OSPage() {
             <div 
               key={order.id} 
               onClick={() => router.push(`/os/${order.id}`)}
-              className="p-4 bg-white rounded-xl border border-gray-100 shadow-sm hover:border-blue-200 transition-all cursor-pointer"
+              className="p-4 bg-white rounded-xl border border-gray-100 shadow-sm hover:border-blue-200 transition-all cursor-pointer relative"
             >
+              <button
+                onClick={(e) => { e.stopPropagation(); router.push(`/sales?edit=${order.id}`); }}
+                className="absolute top-3 right-3 text-gray-400 hover:text-blue-600 p-1.5 rounded-lg hover:bg-gray-50 transition-colors"
+                title="Editar venda"
+              >
+                <Pencil size={16} />
+              </button>
               <div className="flex justify-between items-start mb-2">
                 <div>
                   <p className="font-bold text-gray-800">{order.customers?.name || 'Cliente desconhecido'}</p>

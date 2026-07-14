@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { formatCurrency, companyInfo } from '@/lib/format';
@@ -142,6 +143,130 @@ export default function SalesPage() {
   const [createdOS, setCreatedOS] = useState<any>(null);
   const [showPrintModal, setShowPrintModal] = useState(false);
 
+  // Edição de venda existente
+  const searchParams = useSearchParams();
+  const editOrderId = searchParams.get('edit');
+  const [loadingEdit, setLoadingEdit] = useState(false);
+
+  useEffect(() => {
+    if (editOrderId) {
+      loadForEdit(editOrderId);
+    }
+  }, [editOrderId]);
+
+  async function loadForEdit(orderId: string) {
+    setLoadingEdit(true);
+    try {
+      const { data: os, error } = await supabase
+        .from('service_orders')
+        .select('*, customers(*)')
+        .eq('id', orderId)
+        .single();
+      if (error || !os) throw new Error('Ordem de serviço não encontrada.');
+
+      // Parse notes (frame/lenses/observations are concatenated)
+      let frame = '', lenses = '', notes = '';
+      if (os.notes) {
+        const frameMatch = os.notes.match(/Armação: (.+?)(?:\n|$)/);
+        const lensesMatch = os.notes.match(/Lente: (.+?)(?:\n|$)/);
+        const notesMatch = os.notes.match(/Observações: (.+?)$/);
+        if (frameMatch) frame = frameMatch[1].trim();
+        if (lensesMatch) lenses = lensesMatch[1].trim();
+        if (notesMatch) notes = notesMatch[1].trim();
+        if (frameMatch && frame === 'Não informada') frame = '';
+        if (lensesMatch && lenses === 'Não informada') lenses = '';
+        if (notesMatch && notes === 'Nenhuma') notes = '';
+      }
+
+      // Set customer
+      if (os.customers) {
+        setSelectedCustomerId(os.customer_id);
+        setCustomerSearch(os.customers.name || '');
+      }
+
+      // Set sale details
+      setSaleDetails({
+        saleDate: getLocalDate(new Date(os.created_at)),
+        frame,
+        lenses,
+        total_value: String(os.total_value || ''),
+        scheduled_date: os.scheduled_date || getLocalDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)),
+        notes,
+        frame_width: String(os.frame_width ?? ''),
+        bridge_rim: String(os.bridge_rim ?? ''),
+        major_angle: String(os.major_angle ?? ''),
+        dp_os: String(os.dp_os ?? ''),
+        altura: String(os.altura ?? '')
+      });
+
+      // Set OS number
+      setOsNumber(os.os_number || '');
+
+      // Set geraOS (it was generated, so keep true)
+      setGeraOS(true);
+
+      // Fetch latest prescription for this customer
+      const { data: presc } = await supabase
+        .from('prescriptions')
+        .select('*')
+        .eq('customer_id', os.customer_id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (presc) {
+        setPrescription({
+          oe_sphere: presc.oe_sphere != null ? String(presc.oe_sphere) : '',
+          oe_cylinder: presc.oe_cylinder != null ? String(presc.oe_cylinder) : '',
+          oe_axis: presc.oe_axis != null ? String(presc.oe_axis) : '',
+          od_sphere: presc.od_sphere != null ? String(presc.od_sphere) : '',
+          od_cylinder: presc.od_cylinder != null ? String(presc.od_cylinder) : '',
+          od_axis: presc.od_axis != null ? String(presc.od_axis) : '',
+          addition: presc.addition != null ? String(presc.addition) : '',
+          dp: presc.dp != null ? String(presc.dp) : '',
+          notes: presc.notes || ''
+        });
+        setIsSunglasses(false);
+      }
+
+      // Fetch financial records to guess payment
+      const { data: fins } = await supabase
+        .from('financial_records')
+        .select('*')
+        .eq('order_id', orderId)
+        .order('due_date', { ascending: true });
+
+      if (fins && fins.length > 0) {
+        const incomeRecords = fins.filter((f: any) => f.type === 'Income');
+        const entryRecord = incomeRecords.find((f: any) => f.description.includes('Entrada'));
+        const instRecords = incomeRecords.filter((f: any) => f.description.includes('- '));
+        const hasCardRecord = incomeRecords.some((f: any) => {
+          const method = paymentMethods.find(m => f.description.includes(m.name));
+          return method?.is_card;
+        });
+
+        if (hasCardRecord) {
+          setPayment(prev => ({ ...prev, installments: String(instRecords.length || 1), downPayment: '0' }));
+        } else {
+          const instCount = instRecords.length || 0;
+          const entryAmount = entryRecord ? entryRecord.amount : 0;
+          setPayment(prev => ({
+            ...prev,
+            downPayment: entryAmount > 0 ? String(entryAmount) : '0',
+            installments: String(instCount || 1),
+            status: fins.some((f: any) => f.status === 'Pending') ? 'Pending' : 'Paid'
+          }));
+        }
+      }
+
+      setActiveSection(1);
+    } catch (err: any) {
+      alert('Erro ao carregar venda para edição: ' + err.message);
+    } finally {
+      setLoadingEdit(false);
+    }
+  }
+
   useEffect(() => {
     fetchCustomers();
     fetchPaymentMethods();
@@ -252,7 +377,7 @@ export default function SalesPage() {
       const totalVal = parseFloat(saleDetails.total_value);
       if (isNaN(totalVal)) throw new Error('Insira um valor total válido para a venda.');
 
-      // 4. Cadastrar Ordem de Serviço (O.S.) — só se geraOS estiver ativado
+      // 4. Cadastrar ou atualizar Ordem de Serviço (O.S.)
       let osData: any = null;
       if (geraOS) {
         const notesOS = `Armação: ${saleDetails.frame || 'Não informada'}\nLente: ${saleDetails.lenses || 'Não informada'}\nObservações: ${saleDetails.notes || 'Nenhuma'}`;
@@ -269,13 +394,25 @@ export default function SalesPage() {
           altura: saleDetails.altura ? parseFloat(saleDetails.altura) : null
         };
         if (osNumber.trim()) osPayload.os_number = osNumber.trim();
-        const { data: osResult, error: osErr } = await supabase
-          .from('service_orders')
-          .insert([osPayload])
-          .select('*, customers(name, phone, cpf)')
-          .single();
-        if (osErr) throw osErr;
-        osData = osResult;
+
+        if (editOrderId) {
+          const { data: osResult, error: osErr } = await supabase
+            .from('service_orders')
+            .update(osPayload)
+            .eq('id', editOrderId)
+            .select('*, customers(name, phone, cpf)')
+            .single();
+          if (osErr) throw osErr;
+          osData = osResult;
+        } else {
+          const { data: osResult, error: osErr } = await supabase
+            .from('service_orders')
+            .insert([osPayload])
+            .select('*, customers(name, phone, cpf)')
+            .single();
+          if (osErr) throw osErr;
+          osData = osResult;
+        }
       }
 
       // 5. Cadastrar lançamentos financeiros
@@ -373,8 +510,13 @@ export default function SalesPage() {
 
 
 
-      const { error: finErr } = await supabase.from('financial_records').insert(financialInserts);
-      if (finErr) throw finErr;
+       // Se editando, remove lançamentos financeiros antigos e recria
+       if (editOrderId) {
+         await supabase.from('financial_records').delete().eq('order_id', editOrderId);
+       }
+
+       const { error: finErr } = await supabase.from('financial_records').insert(financialInserts);
+       if (finErr) throw finErr;
 
       const clientName = isNewCustomer ? newCustomer.name : (customers.find(c => c.id === finalCustomerId)?.name || 'Cliente');
       const clientPhone = isNewCustomer ? newCustomer.phone : (customers.find(c => c.id === finalCustomerId)?.phone || '');
@@ -413,6 +555,11 @@ export default function SalesPage() {
         notes: saleDetails.notes
       });
 
+      if (editOrderId) {
+        alert('Venda atualizada com sucesso!');
+        window.location.href = '/os';
+        return;
+      }
       setShowPrintModal(true);
       resetForm();
       fetchCustomers();
@@ -472,8 +619,8 @@ export default function SalesPage() {
   return (
     <div className="p-4 md:p-8 max-w-4xl mx-auto pb-24">
       <header className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Nova Venda</h1>
-        <p className="text-sm text-gray-500">Preencha cada etapa para criar a venda completa.</p>
+        <h1 className="text-2xl font-bold text-gray-900">{editOrderId ? 'Editando Venda' : 'Nova Venda'}</h1>
+        <p className="text-sm text-gray-500">{editOrderId ? 'Altere os dados necessários e salve as alterações.' : 'Preencha cada etapa para criar a venda completa.'}</p>
       </header>
 
       <form onSubmit={handleCreateSale} className="space-y-3">
@@ -830,9 +977,9 @@ export default function SalesPage() {
             className="w-full mt-4 py-3 bg-blue-600 text-white font-extrabold rounded-2xl hover:bg-blue-700 transition-all shadow-lg flex items-center justify-center gap-2"
           >
             {loading ? (
-              <><Loader2 className="animate-spin" size={20} /> Salvando tudo...</>
+              <><Loader2 className="animate-spin" size={20} /> Salvando...</>
             ) : (
-              geraOS ? 'Finalizar Venda & Gerar O.S.' : 'Finalizar Venda'
+              editOrderId ? 'Salvar Alterações' : (geraOS ? 'Finalizar Venda & Gerar O.S.' : 'Finalizar Venda')
             )}
           </button>
         </AccordionSection>

@@ -1,9 +1,9 @@
 'use client';
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { formatCurrency, companyInfo } from '@/lib/format';
-import { Printer, ArrowLeft, FileText, User, Calendar, Package, Trash2, CheckCircle, Clock, DollarSign, ChevronDown } from 'lucide-react';
+import { Printer, ArrowLeft, FileText, User, Calendar, Package, Trash2, CheckCircle, Clock, DollarSign, ChevronDown, Pencil } from 'lucide-react';
 import Link from 'next/link';
 
 const STATUS_OPTIONS = [
@@ -17,6 +17,7 @@ const STATUS_OPTIONS = [
 export default function OSDetailPage() {
   const params = useParams();
   const osId = params.id as string;
+  const router = useRouter();
   const [osData, setOsData] = useState<any>(null);
   const [financialRecords, setFinancialRecords] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -177,6 +178,9 @@ export default function OSDetailPage() {
           <ArrowLeft size={20} /> Voltar para O.S.
         </Link>
         <div className="flex gap-3">
+          <button onClick={() => router.push(`/sales?edit=${osId}`)} className="bg-blue-50 text-blue-600 px-4 py-2 rounded-xl flex items-center gap-2 hover:bg-blue-100 transition-all font-bold border border-blue-100">
+            <Pencil size={18} /> Editar
+          </button>
           <button onClick={handlePrint} className="bg-blue-600 text-white px-4 py-2 rounded-xl flex items-center gap-2 hover:bg-blue-700 transition-all shadow-md shadow-blue-100 font-bold">
             <Printer size={18} /> Imprimir O.S.
           </button>
