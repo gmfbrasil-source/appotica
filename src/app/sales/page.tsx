@@ -285,8 +285,7 @@ export default function SalesPage() {
        const entrada = Math.min(parseFloat(payment.downPayment) || 0, totalVal);
        const restante = Math.round((totalVal - entrada) * 100) / 100;
        const instCount = Math.max(parseInt(payment.installments) || 0, 0);
-       const osRef = osData?.id?.slice(0, 8);
-       const descPrefix = osRef ? `Venda O.S. #${osRef}` : 'Venda';
+       const descPrefix = osData?.os_number ? `Venda O.S. ${osData.os_number}` : 'Venda';
 
        // Cartão: recebimento integral + taxa automática
        if (selectedMethod?.is_card) {

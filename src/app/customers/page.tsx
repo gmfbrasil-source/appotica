@@ -69,7 +69,7 @@ export default function CustomersPage() {
       setCustomerOrders(ordersData || []);
       const { data: finData } = await supabase
         .from('financial_records')
-        .select('*')
+        .select('*, service_orders(os_number)')
         .eq('customer_id', customer.id)
         .order('due_date', { ascending: true });
       setCustomerFinancials(finData || []);
@@ -387,7 +387,12 @@ export default function CustomersPage() {
                               {paidIncomeRecords.map((rec: any) => (
                                 <div key={rec.id} className="flex items-center justify-between text-sm py-1.5 border-b border-gray-50 last:border-0">
                                   <div>
-                                    <p className="text-gray-800 font-medium">{rec.description}</p>
+                                    <p className="text-gray-800 font-medium">
+                                {rec.description}
+                                {rec.service_orders?.os_number && (
+                                  <span className="ml-1 text-[10px] bg-gray-100 text-gray-600 font-bold px-1 py-0.5 rounded">OS #{rec.service_orders.os_number}</span>
+                                )}
+                              </p>
                                     <p className="text-[11px] text-gray-400 flex items-center gap-1">
                                       <Calendar size={10} /> {new Date(rec.due_date).toLocaleDateString('pt-BR')}
                                     </p>
@@ -403,7 +408,12 @@ export default function CustomersPage() {
                               {paidExpenseRecords.map((rec: any) => (
                                 <div key={rec.id} className="flex items-center justify-between text-sm py-1.5 border-b border-gray-50 last:border-0">
                                   <div>
-                                    <p className="text-gray-800 font-medium">{rec.description}</p>
+                                    <p className="text-gray-800 font-medium">
+                                {rec.description}
+                                {rec.service_orders?.os_number && (
+                                  <span className="ml-1 text-[10px] bg-gray-100 text-gray-600 font-bold px-1 py-0.5 rounded">OS #{rec.service_orders.os_number}</span>
+                                )}
+                              </p>
                                     <p className="text-[11px] text-gray-400 flex items-center gap-1">
                                       <Calendar size={10} /> {new Date(rec.due_date).toLocaleDateString('pt-BR')}
                                     </p>
@@ -425,7 +435,12 @@ export default function CustomersPage() {
                           {pendingIncomeRecords.map((rec: any) => (
                             <div key={rec.id} className="flex items-center justify-between text-sm py-1.5 border-b border-gray-50 last:border-0">
                               <div>
-                                <p className="text-gray-800 font-medium">{rec.description}</p>
+                                <p className="text-gray-800 font-medium">
+                                {rec.description}
+                                {rec.service_orders?.os_number && (
+                                  <span className="ml-1 text-[10px] bg-gray-100 text-gray-600 font-bold px-1 py-0.5 rounded">OS #{rec.service_orders.os_number}</span>
+                                )}
+                              </p>
                                 <p className="text-[11px] text-gray-400 flex items-center gap-1">
                                   <Calendar size={10} /> Vence: {new Date(rec.due_date).toLocaleDateString('pt-BR')}
                                 </p>
@@ -445,7 +460,12 @@ export default function CustomersPage() {
                           {pendingExpenseRecords.map((rec: any) => (
                             <div key={rec.id} className="flex items-center justify-between text-sm py-1.5 border-b border-gray-50 last:border-0">
                               <div>
-                                <p className="text-gray-800 font-medium">{rec.description}</p>
+                                <p className="text-gray-800 font-medium">
+                                {rec.description}
+                                {rec.service_orders?.os_number && (
+                                  <span className="ml-1 text-[10px] bg-gray-100 text-gray-600 font-bold px-1 py-0.5 rounded">OS #{rec.service_orders.os_number}</span>
+                                )}
+                              </p>
                                 <p className="text-[11px] text-gray-400 flex items-center gap-1">
                                   <Calendar size={10} /> Vence: {new Date(rec.due_date).toLocaleDateString('pt-BR')}
                                 </p>
@@ -468,7 +488,12 @@ export default function CustomersPage() {
                               {overdueIncome.map((rec: any) => (
                                 <div key={rec.id} className="flex items-center justify-between text-sm py-1.5 border-b border-gray-50 last:border-0">
                                   <div>
-                                    <p className="text-gray-800 font-medium">{rec.description}</p>
+                                    <p className="text-gray-800 font-medium">
+                                {rec.description}
+                                {rec.service_orders?.os_number && (
+                                  <span className="ml-1 text-[10px] bg-gray-100 text-gray-600 font-bold px-1 py-0.5 rounded">OS #{rec.service_orders.os_number}</span>
+                                )}
+                              </p>
                                     <p className="text-[11px] text-red-400 flex items-center gap-1">
                                       <Calendar size={10} /> Venceu: {new Date(rec.due_date).toLocaleDateString('pt-BR')}
                                     </p>
@@ -484,7 +509,12 @@ export default function CustomersPage() {
                               {overdueExpense.map((rec: any) => (
                                 <div key={rec.id} className="flex items-center justify-between text-sm py-1.5 border-b border-gray-50 last:border-0">
                                   <div>
-                                    <p className="text-gray-800 font-medium">{rec.description}</p>
+                                    <p className="text-gray-800 font-medium">
+                                {rec.description}
+                                {rec.service_orders?.os_number && (
+                                  <span className="ml-1 text-[10px] bg-gray-100 text-gray-600 font-bold px-1 py-0.5 rounded">OS #{rec.service_orders.os_number}</span>
+                                )}
+                              </p>
                                     <p className="text-[11px] text-red-400 flex items-center gap-1">
                                       <Calendar size={10} /> Venceu: {new Date(rec.due_date).toLocaleDateString('pt-BR')}
                                     </p>

@@ -52,7 +52,7 @@ export default function FinancePage() {
     setLoading(true);
     const { data, error } = await supabase
       .from('financial_records')
-      .select('*, customers(name, cnpj)')
+      .select('*, customers(name, cnpj), service_orders(os_number)')
       .order('due_date', { ascending: true });
     
     if (!error) setRecords(data || []);
@@ -684,6 +684,9 @@ export default function FinancePage() {
               <div className="flex-1">
                 <p className="font-semibold text-gray-800">
                   {record.description}
+                  {record.service_orders?.os_number && (
+                    <span className="ml-2 text-[10px] bg-gray-100 text-gray-600 font-bold px-1.5 py-0.5 rounded">OS #{record.service_orders.os_number}</span>
+                  )}
                   {record.description.match(/\(\d+\/\d+\)/) && (
                     <span className="ml-2 text-[10px] bg-blue-100 text-blue-700 font-bold px-1.5 py-0.5 rounded">Recorrente</span>
                   )}
@@ -907,7 +910,12 @@ export default function FinancePage() {
                         {filteredRecords.filter(r => r.type === 'Income').map((record: any) => (
                           <div key={record.id} className="flex items-center justify-between p-3 hover:bg-green-50 text-sm border-b border-green-50 last:border-0">
                             <div className="flex-1 min-w-0">
-                              <p className="font-semibold text-gray-800 truncate">{record.description}</p>
+                              <p className="font-semibold text-gray-800 truncate">
+                                {record.description}
+                                {record.service_orders?.os_number && (
+                                  <span className="ml-1 text-[10px] bg-gray-100 text-gray-600 font-bold px-1 py-0.5 rounded">OS #{record.service_orders.os_number}</span>
+                                )}
+                              </p>
                               <p className="text-[11px] text-gray-500">
                                 Venc: {new Date(record.due_date).toLocaleDateString('pt-BR')}
                                 {record.customers?.name && ` | ${record.customers.name}`}
@@ -935,7 +943,12 @@ export default function FinancePage() {
                         {filteredRecords.filter(r => r.type === 'Expense').map((record: any) => (
                           <div key={record.id} className="flex items-center justify-between p-3 hover:bg-red-50 text-sm border-b border-red-50 last:border-0">
                             <div className="flex-1 min-w-0">
-                              <p className="font-semibold text-gray-800 truncate">{record.description}</p>
+                              <p className="font-semibold text-gray-800 truncate">
+                                {record.description}
+                                {record.service_orders?.os_number && (
+                                  <span className="ml-1 text-[10px] bg-gray-100 text-gray-600 font-bold px-1 py-0.5 rounded">OS #{record.service_orders.os_number}</span>
+                                )}
+                              </p>
                               <p className="text-[11px] text-gray-500">
                                 Venc: {new Date(record.due_date).toLocaleDateString('pt-BR')}
                                 {record.customers?.name && ` | ${record.customers.name}`}

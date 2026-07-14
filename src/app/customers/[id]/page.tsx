@@ -48,7 +48,7 @@ export default function CustomerDetailsPage() {
       // 3. Busca histórico financeiro
       const { data: finData, error: finErr } = await supabase
         .from('financial_records')
-        .select('*')
+        .select('*, service_orders(os_number)')
         .eq('customer_id', customerId)
         .order('due_date', { ascending: true });
 
@@ -259,7 +259,12 @@ export default function CustomerDetailsPage() {
                 <tbody className="divide-y divide-gray-50">
                   {financials.length > 0 ? financials.map((fin) => (
                     <tr key={fin.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="py-3 px-2 font-medium text-gray-800">{fin.description}</td>
+                      <td className="py-3 px-2 font-medium text-gray-800">
+                        {fin.description}
+                        {fin.service_orders?.os_number && (
+                          <span className="ml-2 text-[10px] bg-gray-100 text-gray-600 font-bold px-1.5 py-0.5 rounded">OS #{fin.service_orders.os_number}</span>
+                        )}
+                      </td>
                       <td className="py-3 px-2 text-gray-500">{fin?.due_date ? new Date(fin.due_date).toLocaleDateString('pt-BR') : '---'}</td>
                       <td className="py-3 px-2 font-bold">{formatCurrency(fin?.amount || 0)}</td>
                       <td className="py-3 px-2">
