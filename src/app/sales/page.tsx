@@ -163,6 +163,7 @@ export default function SalesPage() {
         .eq('id', orderId)
         .single();
       if (error || !os) throw new Error('Ordem de serviço não encontrada.');
+      origSaleDateRef.current = os.sale_date || null;
 
       // Parse notes (frame/lenses/observations are concatenated)
       let frame = '', lenses = '', notes = '';
@@ -273,12 +274,8 @@ export default function SalesPage() {
           hasCardEntry,
         });
 
-        // Set first due date from the first installment or entry
-        if (instRecords.length > 0 && instRecords[0].due_date) {
-          setFirstDueDate(instRecords[0].due_date);
-        } else if (entryRecord?.due_date) {
-          setFirstDueDate(entryRecord.due_date);
-        }
+        // Set first due date from sale date (aligned with the edited sale date)
+        setFirstDueDate(os.sale_date || getLocalDate(new Date(os.created_at)));
       } else {
         setPayment(prev => ({ ...prev, method: (methods || paymentMethods)[0]?.id || '', hasCardEntry: false }));
       }
@@ -488,6 +485,16 @@ export default function SalesPage() {
       const financialInserts = [];
        const hoje = parseDateStr(saleDetails.saleDate);
        const hojeStr = getLocalDate(hoje);
+       // Se editando e saleDate mudou, ajusta firstDueDate pelo mesmo delta
+       let effectiveFirstDueDate = firstDueDate;
+       if (editOrderId && origSaleDateRef.current && origSaleDateRef.current !== saleDetails.saleDate) {
+         const oldDate = parseDateStr(origSaleDateRef.current);
+         const newDate = hoje;
+         const deltaMs = newDate.getTime() - oldDate.getTime();
+         const oldFirstDue = parseDateStr(firstDueDate);
+         const newFirstDue = new Date(oldFirstDue.getTime() + deltaMs);
+         effectiveFirstDueDate = getLocalDate(newFirstDue);
+       }
        const entrada = Math.min(parseFloat(payment.downPayment) || 0, totalVal);
        const restante = Math.round((totalVal - entrada) * 100) / 100;
        const instCount = Math.max(parseInt(payment.installments) || 0, 0);
@@ -542,7 +549,7 @@ export default function SalesPage() {
           // Demais métodos (Pix, Dinheiro, Boleto, Carnê)
           // Entrada (só se > 0)
           if (entrada > 0) {
-            const entryDue = instCount > 0 ? parseDateStr(firstDueDate) : hoje;
+            const entryDue = instCount > 0 ? parseDateStr(effectiveFirstDueDate) : hoje;
             financialInserts.push({
               shop_id: shopId, type: 'Income',
                description: `${osPrefix} (Entrada)`,
@@ -557,12 +564,12 @@ export default function SalesPage() {
 
           // Parcelas
           if (instCount > 0 && restante > 0) {
-            const firstDate = parseDateStr(firstDueDate);
+            const firstDate = parseDateStr(effectiveFirstDueDate);
             for (let i = 0; i < instCount; i++) {
               const baseValor = restante / instCount;
               let valorParcela = Math.floor(baseValor * 100) / 100;
               if (i === instCount - 1) valorParcela = Math.round((restante - valorParcela * (instCount - 1)) * 100) / 100;
-              const due = parseDateStr(firstDueDate);
+              const due = parseDateStr(effectiveFirstDueDate);
               due.setDate(due.getDate() + i * 30);
               financialInserts.push({
                 shop_id: shopId, type: 'Income',
@@ -607,12 +614,12 @@ export default function SalesPage() {
       // Monta dados das parcelas para o carnê
       const installmentData: { num: number; due: string; amount: number }[] = [];
       if (!selectedMethod?.is_card && instCount > 0 && restante > 0) {
-        const firstDate = parseDateStr(firstDueDate);
+        const firstDate = parseDateStr(effectiveFirstDueDate);
         for (let i = 0; i < instCount; i++) {
           const baseValor = restante / instCount;
           let valorParcela = Math.floor(baseValor * 100) / 100;
           if (i === instCount - 1) valorParcela = Math.round((restante - valorParcela * (instCount - 1)) * 100) / 100;
-          const due = parseDateStr(firstDueDate);
+          const due = parseDateStr(effectiveFirstDueDate);
           due.setDate(due.getDate() + i * 30);
           installmentData.push({ num: i + 1, due: due.toLocaleDateString('pt-BR'), amount: valorParcela });
         }
@@ -687,6 +694,7 @@ export default function SalesPage() {
 
   const printAreaRef = useRef<HTMLDivElement>(null);
   const carneRef = useRef<HTMLDivElement>(null);
+  const origSaleDateRef = useRef<string | null>(null);
 
   function handlePrint() {
     const printContent = printAreaRef.current?.innerHTML;
