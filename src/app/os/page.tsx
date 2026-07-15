@@ -5,6 +5,12 @@ import { formatCurrency } from '@/lib/format';
 import { Plus, Package, Truck, CheckCircle, Clock, Pencil } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 
+function parseLocalDate(dateStr: string): Date {
+  if (!dateStr) return new Date();
+  const parts = dateStr.split('T')[0].split('-');
+  return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+}
+
 export default function OSPage() {
   const router = useRouter();
   const [orders, setOrders] = useState<any[]>([]);
@@ -231,7 +237,7 @@ export default function OSPage() {
               <div className="flex justify-between items-center mt-4 pt-3 border-t border-gray-50">
                 <div className="flex items-center text-xs text-gray-500">
                   <Clock size={12} className="mr-1" />
-                  {order.scheduled_date ? new Date(order.scheduled_date).toLocaleDateString('pt-BR') : 'Sem data'}
+                  {order.scheduled_date ? parseLocalDate(order.scheduled_date).toLocaleDateString('pt-BR') : 'Sem data'}
                 </div>
                 <p className="font-bold text-blue-600">{formatCurrency(order.total_value || 0)}</p>
               </div>

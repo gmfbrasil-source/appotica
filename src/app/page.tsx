@@ -30,13 +30,14 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const finArrRef = useRef<any[]>([]);
+  const osArrRef = useRef<any[]>([]);
 
   useEffect(() => {
     fetchDashboardData();
   }, []);
 
   useEffect(() => {
-    if (finArrRef.current.length > 0) computeStats(period);
+    if (finArrRef.current.length > 0 || osArrRef.current.length > 0) computeStats(period);
   }, [period]);
 
   function getPeriodDates(p: string) {
@@ -52,17 +53,23 @@ export default function Dashboard() {
 
   function computeStats(p: string) {
     const arr = finArrRef.current;
+    const orders = osArrRef.current;
     const dates = getPeriodDates(p);
     const todayStr = getLocalDate();
 
-    const withinPeriod = (r: any) => {
+    const withinPeriodOS = (os: any) => {
+      if (!dates.start) return true;
+      const saleDate = os.sale_date || os.created_at?.split('T')[0];
+      return saleDate >= dates.start && saleDate <= dates.end;
+    };
+
+    const grossSales = orders.filter((os: any) => withinPeriodOS(os)).reduce((acc: number, os: any) => acc + (os.total_value || 0), 0);
+    const withinFinPeriod = (r: any) => {
       if (!dates.start) return true;
       const refDate = r.payment_date || r.due_date;
       return refDate >= dates.start && refDate <= dates.end;
     };
-
-    const grossSales = arr.filter((r: any) => r.type === 'Income' && withinPeriod(r)).reduce((acc: number, r: any) => acc + (r.amount || 0), 0);
-    const receivedIncome = arr.filter((r: any) => r.status === 'Paid' && r.type === 'Income' && withinPeriod(r)).reduce((acc: number, r: any) => acc + r.amount, 0);
+    const receivedIncome = arr.filter((r: any) => r.status === 'Paid' && r.type === 'Income' && withinFinPeriod(r)).reduce((acc: number, r: any) => acc + r.amount, 0);
     const pendingIncome = arr.filter((r: any) => r.status === 'Pending' && r.type === 'Income').reduce((acc: number, r: any) => acc + r.amount, 0);
     const pendingExpense = arr.filter((r: any) => r.status === 'Pending' && r.type === 'Expense').reduce((acc: number, r: any) => acc + r.amount, 0);
 
@@ -87,20 +94,24 @@ export default function Dashboard() {
         return;
       }
 
-      const [custRes, osRes, finRes, osRecentRes] = await Promise.all([
+      const [custRes, osRes, finRes, osAllRes, osRecentRes] = await Promise.all([
         supabase.from('customers').select('*', { count: 'exact', head: true }).eq('shop_id', profile.shop_id),
         supabase.from('service_orders').select('*', { count: 'exact', head: true }).eq('shop_id', profile.shop_id).filter('status', 'not.in', '(Delivered,Cancelled)'),
         supabase.from('financial_records').select('*').eq('shop_id', profile.shop_id),
+        supabase.from('service_orders').select('id, sale_date, total_value, created_at').eq('shop_id', profile.shop_id),
         supabase.from('service_orders').select('*, customers(name)').eq('shop_id', profile.shop_id).order('created_at', { ascending: false }).limit(5),
       ]);
 
       if (custRes.error) console.error('Erro ao buscar clientes:', custRes.error);
       if (osRes.error) console.error('Erro ao buscar O.S.:', osRes.error);
       if (finRes.error) console.error('Erro ao buscar financeiro:', finRes.error);
+      if (osAllRes.error) console.error('Erro ao buscar todas O.S.:', osAllRes.error);
       if (osRecentRes.error) console.error('Erro ao buscar O.S. recentes:', osRecentRes.error);
 
       const finArr = finRes.data || [];
+      const osAll = osAllRes.data || [];
       finArrRef.current = finArr;
+      osArrRef.current = osAll;
 
       computeStats(period);
       setStats(prev => ({ ...prev,
@@ -109,14 +120,17 @@ export default function Dashboard() {
       }));
       setRecentOS(osRecentRes.data || []);
 
-      // Chart: últimos 6 meses
+      // Chart: últimos 6 meses — usa sale_date das OS
       const months: any[] = [];
       const now = new Date();
       for (let i = 5; i >= 0; i--) {
         const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
         const label = d.toLocaleDateString('pt-BR', { month: 'short' }).replace('.', '');
         const monthStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-        const revenue = finArr.filter((r: any) => r.type === 'Income' && r.status === 'Paid' && r.payment_date?.startsWith(monthStr)).reduce((acc: number, r: any) => acc + (r.amount || 0), 0);
+        const revenue = osAll.filter((os: any) => {
+          const sd = os.sale_date || os.created_at?.split('T')[0] || '';
+          return sd.startsWith(monthStr);
+        }).reduce((acc: number, os: any) => acc + (os.total_value || 0), 0);
         const expenses = finArr.filter((r: any) => r.type === 'Expense' && r.status === 'Paid' && r.payment_date?.startsWith(monthStr)).reduce((acc: number, r: any) => acc + (r.amount || 0), 0);
         months.push({ name: label, revenue: Math.round(revenue), expenses: Math.round(expenses) });
       }

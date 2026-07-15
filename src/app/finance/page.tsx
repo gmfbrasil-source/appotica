@@ -9,6 +9,12 @@ function getLocalDate(date?: Date): string {
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 }
 
+function parseLocalDate(dateStr: string): Date {
+  if (!dateStr) return new Date();
+  const parts = dateStr.split('T')[0].split('-');
+  return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+}
+
 export default function FinancePage() {
   const [records, setRecords] = useState<any[]>([]);
   const [customers, setCustomers] = useState<any[]>([]);
@@ -253,7 +259,7 @@ export default function FinancePage() {
     const w = window.open('', '_blank');
     if (!w) return;
 
-    const periodo = `${filterDateStart ? new Date(filterDateStart).toLocaleDateString('pt-BR') : 'Início'} até ${filterDateEnd ? new Date(filterDateEnd).toLocaleDateString('pt-BR') : 'Hoje'}`;
+    const periodo = `${filterDateStart ? parseLocalDate(filterDateStart).toLocaleDateString('pt-BR') : 'Início'} até ${filterDateEnd ? parseLocalDate(filterDateEnd).toLocaleDateString('pt-BR') : 'Hoje'}`;
     const incomePending = filteredRecords.filter(r => r.type === 'Income' && r.status === 'Pending');
     const incomePaid = filteredRecords.filter(r => r.type === 'Income' && r.status === 'Paid');
     const expensePending = filteredRecords.filter(r => r.type === 'Expense' && r.status === 'Pending');
@@ -268,7 +274,7 @@ export default function FinancePage() {
       const statusCor = r.status === 'Paid' ? (r.type === 'Income' ? '#16a34a' : '#dc2626') : '#ea580c';
       return `<tr>
         <td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:11px;color:#333">${r.description}</td>
-        <td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:11px;color:#666">${new Date(r.due_date).toLocaleDateString('pt-BR')}</td>
+        <td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:11px;color:#666">${parseLocalDate(r.due_date).toLocaleDateString('pt-BR')}</td>
         <td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:11px;color:#666">${r.customers?.name || '-'}</td>
         <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right;font-weight:bold;color:${cor};font-size:12px">R$ ${r.amount.toFixed(2).replace('.', ',')}</td>
         <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:center;font-size:10px;color:${statusCor};font-weight:bold">${statusLabel}</td>
@@ -710,7 +716,7 @@ export default function FinancePage() {
 
                 <div className="flex items-center text-xs text-gray-500 mt-1">
                   <Calendar size={12} className="mr-1" />
-                  {new Date(record.due_date).toLocaleDateString('pt-BR')}
+                  {parseLocalDate(record.due_date).toLocaleDateString('pt-BR')}
                 </div>
               </div>
 
@@ -774,9 +780,9 @@ export default function FinancePage() {
                 <div>
                   <span className="text-gray-500">Período: </span>
                   <span className="font-bold">
-                    {filterDateStart ? new Date(filterDateStart).toLocaleDateString('pt-BR') : 'Início'} 
+                    {filterDateStart ? parseLocalDate(filterDateStart).toLocaleDateString('pt-BR') : 'Início'} 
                     {' até '} 
-                    {filterDateEnd ? new Date(filterDateEnd).toLocaleDateString('pt-BR') : 'Hoje'}
+                    {filterDateEnd ? parseLocalDate(filterDateEnd).toLocaleDateString('pt-BR') : 'Hoje'}
                   </span>
                 </div>
                 <span className="text-xs text-gray-400">{filteredRecords.length} registro(s)</span>
@@ -926,7 +932,7 @@ export default function FinancePage() {
                                 )}
                               </p>
                               <p className="text-[11px] text-gray-500">
-                                Venc: {new Date(record.due_date).toLocaleDateString('pt-BR')}
+                                Venc: {parseLocalDate(record.due_date).toLocaleDateString('pt-BR')}
                                 {record.customers?.name && ` | ${record.customers.name}`}
                               </p>
                             </div>
@@ -959,7 +965,7 @@ export default function FinancePage() {
                                 )}
                               </p>
                               <p className="text-[11px] text-gray-500">
-                                Venc: {new Date(record.due_date).toLocaleDateString('pt-BR')}
+                                Venc: {parseLocalDate(record.due_date).toLocaleDateString('pt-BR')}
                                 {record.customers?.name && ` | ${record.customers.name}`}
                               </p>
                             </div>
