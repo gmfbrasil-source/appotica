@@ -115,45 +115,89 @@ export default function CaixaPage() {
   const alreadyClosed = closings.length > 0;
 
   return (
-    <div className="p-4 md:p-6 max-w-4xl mx-auto pb-24">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
-          <DollarSign size={24} className="text-blue-600" /> Caixa
-        </h1>
+    <div className="min-h-screen bg-gray-50/50">
+      <div className="max-w-4xl mx-auto p-4 md:p-6 lg:p-8 pb-24">
+
+      {/* HEADER ESCURO */}
+      <div className="bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 rounded-3xl p-5 md:p-6 mb-6 text-white">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <p className="text-gray-400 text-xs font-medium uppercase tracking-wider mb-1">Operacional</p>
+            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">Caixa do Dia</h1>
+            <p className="text-gray-400 text-sm mt-1">
+              Controle de movimentações diárias
+            </p>
+          </div>
+          <div className="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-xl">
+            <Calendar size={16} className="text-gray-300" />
+            <input
+              type="date"
+              className="bg-transparent text-white text-sm font-bold outline-none cursor-pointer"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+            />
+          </div>
+        </div>
       </div>
 
-      <div className="mb-6">
-        <label className="block text-sm font-medium text-gray-700 mb-1">Data do Caixa</label>
-        <div className="relative">
-          <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-          <input
-            type="date"
-            className="w-full pl-10 p-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-gray-950"
-            value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
-          />
+      {/* 4 CARDS RESUMO */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+        <div className="bg-white p-4 md:p-5 rounded-2xl border border-gray-100 shadow-sm">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="p-1.5 bg-green-50 rounded-lg"><ArrowUpCircle size={14} className="text-green-600" /></div>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">Recebido</p>
+          </div>
+          <p className="text-xl md:text-2xl font-black text-green-600 mb-1">{formatCurrency(totalIncomePaid)}</p>
+          <p className="text-[10px] text-gray-400">Pagamentos confirmados</p>
+        </div>
+        <div className="bg-white p-4 md:p-5 rounded-2xl border border-gray-100 shadow-sm">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="p-1.5 bg-red-50 rounded-lg"><ArrowDownCircle size={14} className="text-red-600" /></div>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">Pago</p>
+          </div>
+          <p className="text-xl md:text-2xl font-black text-red-600 mb-1">{formatCurrency(totalExpensePaid)}</p>
+          <p className="text-[10px] text-gray-400">Despesas quitadas</p>
+        </div>
+        <div className="bg-white p-4 md:p-5 rounded-2xl border border-gray-100 shadow-sm">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="p-1.5 bg-amber-50 rounded-lg"><Clock size={14} className="text-amber-600" /></div>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">A Receber</p>
+          </div>
+          <p className="text-xl md:text-2xl font-black text-amber-600 mb-1">{formatCurrency(totalIncomePending)}</p>
+          <p className="text-[10px] text-gray-400">Vence hoje</p>
+        </div>
+        <div className="bg-white p-4 md:p-5 rounded-2xl border border-gray-100 shadow-sm">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="p-1.5 bg-orange-50 rounded-lg"><Clock size={14} className="text-orange-600" /></div>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">A Pagar</p>
+          </div>
+          <p className="text-xl md:text-2xl font-black text-orange-600 mb-1">{formatCurrency(totalExpensePending)}</p>
+          <p className="text-[10px] text-gray-400">Vence hoje</p>
         </div>
       </div>
 
-      {/* 4 cards: Recebido / Pago / A Receber / A Pagar */}
-      <div className="grid grid-cols-2 gap-3 mb-6">
-        <div className="bg-green-50 p-4 rounded-2xl border border-green-100">
-          <p className="text-green-600 text-xs font-medium mb-1">Recebido Hoje</p>
-          <p className="text-xl font-bold text-green-700">{formatCurrency(totalIncomePaid)}</p>
-        </div>
-        <div className="bg-red-50 p-4 rounded-2xl border border-red-100">
-          <p className="text-red-600 text-xs font-medium mb-1">Pago Hoje</p>
-          <p className="text-xl font-bold text-red-700">{formatCurrency(totalExpensePaid)}</p>
-        </div>
-        <div className="bg-yellow-50 p-4 rounded-2xl border border-yellow-100">
-          <p className="text-yellow-600 text-xs font-medium mb-1">A Receber (Vence Hoje)</p>
-          <p className="text-xl font-bold text-yellow-700">{formatCurrency(totalIncomePending)}</p>
-        </div>
-        <div className="bg-orange-50 p-4 rounded-2xl border border-orange-100">
-          <p className="text-orange-600 text-xs font-medium mb-1">A Pagar (Vence Hoje)</p>
-          <p className="text-xl font-bold text-orange-700">{formatCurrency(totalExpensePending)}</p>
-        </div>
-      </div>
+      {/* SALDO DO DIA */}
+      {(() => {
+        const saldo = totalIncomePaid - totalExpensePaid;
+        return (
+          <div className={`p-4 rounded-2xl mb-6 flex items-center justify-between border ${
+            saldo >= 0
+              ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-200'
+              : 'bg-gradient-to-r from-red-50 to-rose-50 border-red-200'
+          }`}>
+            <div>
+              <p className="text-[11px] font-bold uppercase tracking-wide text-gray-500">Saldo do Dia</p>
+              <p className={`text-xl font-black ${saldo >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {formatCurrency(saldo)}
+              </p>
+            </div>
+            <div className="text-right text-[11px] leading-relaxed text-gray-500">
+              <p>Recebido <span className="font-bold text-green-600">{formatCurrency(totalIncomePaid)}</span></p>
+              <p>Pago <span className="font-bold text-red-600">{formatCurrency(totalExpensePaid)}</span></p>
+            </div>
+          </div>
+        );
+      })()}
 
       {alreadyClosed && (
         <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 mb-4 flex items-center gap-2 text-sm text-blue-700">
@@ -176,7 +220,7 @@ export default function CaixaPage() {
                   <Clock size={14} /> Pendentes ({pendingRecords.length})
                 </p>
                 {pendingRecords.map((record: any) => (
-                  <div key={record.id} className="flex items-center p-4 bg-white rounded-xl border border-orange-100 shadow-sm mb-2">
+                  <div key={record.id} className="flex items-center p-4 bg-white rounded-2xl border border-orange-100 shadow-sm mb-2 hover:shadow-md transition-all">
                     <div className={`p-2 rounded-full mr-3 ${record.type === 'Income' ? 'bg-yellow-100 text-yellow-600' : 'bg-orange-100 text-orange-600'}`}>
                       {record.type === 'Income' ? <ArrowUpCircle size={18} /> : <ArrowDownCircle size={18} />}
                     </div>
@@ -212,7 +256,7 @@ export default function CaixaPage() {
                   <CheckCircle size={14} /> Efetivados ({paidRecords.length})
                 </p>
                 {paidRecords.map((record: any) => (
-                  <div key={record.id} className="flex items-center p-4 bg-white rounded-xl border border-gray-100 shadow-sm mb-2">
+                  <div key={record.id} className="flex items-center p-4 bg-white rounded-2xl border border-gray-100 shadow-sm mb-2 hover:shadow-md transition-all">
                     <div className={`p-2 rounded-full mr-3 ${record.type === 'Income' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
                       {record.type === 'Income' ? <ArrowUpCircle size={18} /> : <ArrowDownCircle size={18} />}
                     </div>
@@ -238,7 +282,7 @@ export default function CaixaPage() {
 
       <button
         onClick={() => setShowCloseModal(true)}
-        className="w-full py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-all shadow-lg flex items-center justify-center gap-2"
+        className="w-full py-3.5 bg-gray-900 text-white font-bold rounded-2xl hover:bg-gray-800 transition-all shadow-sm flex items-center justify-center gap-2"
       >
         <FileText size={18} /> Fechar Caixa do Dia
       </button>
@@ -294,6 +338,7 @@ export default function CaixaPage() {
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

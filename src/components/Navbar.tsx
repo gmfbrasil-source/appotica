@@ -11,30 +11,30 @@ export default function Navbar() {
   }
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 px-2 py-2 flex justify-around items-center z-50">
-      <Link href="/" className={`flex flex-col items-center transition-colors ${pathname === '/' ? 'text-blue-600' : 'text-gray-600 hover:text-blue-600'}`}>
-        <Home size={22} />
-        <span className="text-[10px]">Home</span>
+    <nav className="fixed bottom-4 left-4 right-4 bg-white/90 backdrop-blur-xl border border-gray-200/50 px-2 py-2 flex justify-around items-center z-50 rounded-2xl shadow-lg shadow-black/5">
+      <Link href="/" className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all ${pathname === '/' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-900'}`}>
+        <Home size={20} />
+        <span className="text-[9px] font-bold">Home</span>
       </Link>
-      <Link href="/customers" className={`flex flex-col items-center transition-colors ${pathname === '/customers' ? 'text-blue-600' : 'text-gray-600 hover:text-blue-600'}`}>
-        <Users size={22} />
-        <span className="text-[10px]">Clientes</span>
+      <Link href="/customers" className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all ${pathname === '/customers' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-900'}`}>
+        <Users size={20} />
+        <span className="text-[9px] font-bold">Clientes</span>
       </Link>
-      <Link href="/sales" className={`flex flex-col items-center transition-colors ${pathname === '/sales' ? 'text-blue-600' : 'text-gray-600 hover:text-blue-600'}`}>
-        <ShoppingBag size={22} />
-        <span className="text-[10px]">Vendas</span>
+      <Link href="/sales" className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all ${pathname === '/sales' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-900'}`}>
+        <ShoppingBag size={20} />
+        <span className="text-[9px] font-bold">Vendas</span>
       </Link>
-      <Link href="/caixa" className={`flex flex-col items-center transition-colors ${pathname === '/caixa' ? 'text-blue-600' : 'text-gray-600 hover:text-blue-600'}`}>
-        <Wallet size={22} />
-        <span className="text-[10px]">Caixa</span>
+      <Link href="/caixa" className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all ${pathname === '/caixa' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-900'}`}>
+        <Wallet size={20} />
+        <span className="text-[9px] font-bold">Caixa</span>
       </Link>
-      <Link href="/finance" className={`flex flex-col items-center transition-colors ${pathname === '/finance' ? 'text-blue-600' : 'text-gray-600 hover:text-blue-600'}`}>
-        <DollarSign size={22} />
-        <span className="text-[10px]">Financeiro</span>
+      <Link href="/finance" className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all ${pathname === '/finance' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-900'}`}>
+        <DollarSign size={20} />
+        <span className="text-[9px] font-bold">Financeiro</span>
       </Link>
-      <Link href="/settings" className={`flex flex-col items-center transition-colors ${pathname === '/settings' ? 'text-blue-600' : 'text-gray-600 hover:text-blue-600'}`}>
-        <Settings size={22} />
-        <span className="text-[10px]">Config</span>
+      <Link href="/settings" className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all ${pathname === '/settings' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-900'}`}>
+        <Settings size={20} />
+        <span className="text-[9px] font-bold">Config</span>
       </Link>
     </nav>
   );

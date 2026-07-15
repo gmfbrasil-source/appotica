@@ -94,15 +94,26 @@ export default function OSPage() {
   };
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Ordens de Serviço</h1>
-        <button 
-          onClick={() => setShowForm(true)}
-          className="bg-blue-600 text-white p-2 rounded-full shadow-lg hover:bg-blue-700 transition-colors"
-        >
-          <Plus size={24} />
-        </button>
+    <div className="min-h-screen bg-gray-50/50">
+      <div className="max-w-7xl mx-auto p-4 md:p-6 lg:p-8 pb-24">
+
+      {/* HEADER ESCURO */}
+      <div className="bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 rounded-3xl p-5 md:p-6 mb-6 text-white">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <p className="text-gray-400 text-xs font-medium uppercase tracking-wider mb-1">Gestão</p>
+            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">Ordens de Serviço</h1>
+            <p className="text-gray-400 text-sm mt-1">
+              Acompanhe todas as O.S. da sua loja
+            </p>
+          </div>
+          <button
+            onClick={() => setShowForm(true)}
+            className="bg-white text-gray-900 px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-gray-100 transition-colors flex items-center gap-2 shadow-lg shadow-white/10"
+          >
+            <Plus size={18} /> Nova O.S.
+          </button>
+        </div>
       </div>
 
       {showForm && (
@@ -215,7 +226,7 @@ export default function OSPage() {
             <div 
               key={order.id} 
               onClick={() => router.push(`/os/${order.id}`)}
-              className="p-4 bg-white rounded-xl border border-gray-100 shadow-sm hover:border-blue-200 transition-all cursor-pointer relative"
+              className="p-4 bg-white rounded-2xl border border-gray-100 shadow-sm hover:border-blue-200 hover:shadow-md transition-all cursor-pointer relative group"
             >
               <button
                 onClick={(e) => { e.stopPropagation(); router.push(`/sales?edit=${order.id}`); }}
@@ -248,6 +259,7 @@ export default function OSPage() {
           )}
         </div>
       )}
+      </div>
     </div>
   );
 }

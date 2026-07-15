@@ -177,20 +177,22 @@ export default function OSDetailPage() {
   const totalPending = incomeRecords.reduce((acc, r) => acc + (r.status === 'Pending' ? r.amount : 0), 0);
 
   return (
-    <div className="p-4 md:p-8 max-w-3xl mx-auto pb-24">
+    <div className="min-h-screen bg-gray-50/50">
+      <div className="max-w-3xl mx-auto p-4 md:p-6 lg:p-8 pb-24">
+
       <div className="flex items-center justify-between mb-6">
-        <Link href="/os" className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition-colors font-medium">
-          <ArrowLeft size={20} /> Voltar para O.S.
+        <Link href="/os" className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition-colors font-medium text-sm">
+          <ArrowLeft size={18} /> Voltar para O.S.
         </Link>
-        <div className="flex gap-3">
-          <button onClick={() => router.push(`/sales?edit=${osId}`)} className="bg-blue-50 text-blue-600 px-4 py-2 rounded-xl flex items-center gap-2 hover:bg-blue-100 transition-all font-bold border border-blue-100">
-            <Pencil size={18} /> Editar
+        <div className="flex gap-2">
+          <button onClick={() => router.push(`/sales?edit=${osId}`)} className="bg-white text-blue-600 px-3 py-2 rounded-xl flex items-center gap-1.5 hover:bg-blue-50 transition-all font-bold border border-blue-100 text-xs shadow-sm">
+            <Pencil size={14} /> Editar
           </button>
-          <button onClick={handlePrint} className="bg-blue-600 text-white px-4 py-2 rounded-xl flex items-center gap-2 hover:bg-blue-700 transition-all shadow-md shadow-blue-100 font-bold">
-            <Printer size={18} /> Imprimir O.S.
+          <button onClick={handlePrint} className="bg-gray-900 text-white px-3 py-2 rounded-xl flex items-center gap-1.5 hover:bg-gray-800 transition-all font-bold text-xs shadow-sm">
+            <Printer size={14} /> Imprimir
           </button>
-          <button onClick={handleDeleteOS} className="bg-red-50 text-red-600 px-4 py-2 rounded-xl flex items-center gap-2 hover:bg-red-100 transition-all font-bold border border-red-100">
-            <Trash2 size={18} /> Excluir
+          <button onClick={handleDeleteOS} className="bg-white text-red-600 px-3 py-2 rounded-xl flex items-center gap-1.5 hover:bg-red-50 transition-all font-bold border border-red-100 text-xs shadow-sm">
+            <Trash2 size={14} /> Excluir
           </button>
         </div>
       </div>
@@ -487,6 +489,7 @@ export default function OSDetailPage() {
             <p className="mt-2">Impresso via AppÓtica - Sistema de Gestão</p>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

@@ -19,7 +19,7 @@ export default function RootLayout({
     <html lang="pt-br">
       <body className={inter.className}>
         <AuthGuard>
-          <main className="pb-20 bg-gray-50 min-h-screen">
+          <main className="pb-20">
             {children}
           </main>
           <Navbar />

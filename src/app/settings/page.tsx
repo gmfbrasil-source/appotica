@@ -332,23 +332,27 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="p-4 md:p-8 max-w-3xl mx-auto pb-24">
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-3">
-          <Link href="/" className="text-gray-500 hover:text-gray-700">
-            <ArrowLeft size={20} />
-          </Link>
-          <h1 className="text-2xl font-extrabold text-gray-900">Configurações</h1>
-        </div>
-        <button
-          onClick={() => { setEditingId(null); setFormData({ name: '', fee_percent: '', max_installments: '1', is_card: false, active: true, fee_by_installment: {} }); setShowForm(true); }}
-          className="bg-blue-600 text-white p-2 rounded-full shadow-lg hover:bg-blue-700 transition-colors"
-        >
-          <Plus size={24} />
-        </button>
-      </div>
+    <div className="min-h-screen bg-gray-50/50">
+      <div className="max-w-3xl mx-auto p-4 md:p-6 lg:p-8 pb-24">
 
-      <p className="text-sm text-gray-500 mb-6">Gerencie as formas de pagamento da sua loja.</p>
+      {/* HEADER ESCURO */}
+      <div className="bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 rounded-3xl p-5 md:p-6 mb-6 text-white">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <p className="text-gray-400 text-xs font-medium uppercase tracking-wider mb-1">Sistema</p>
+            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">Configurações</h1>
+            <p className="text-gray-400 text-sm mt-1">
+              Formas de pagamento e backup de dados
+            </p>
+          </div>
+          <button
+            onClick={() => { setEditingId(null); setFormData({ name: '', fee_percent: '', max_installments: '1', is_card: false, active: true, fee_by_installment: {} }); setShowForm(true); }}
+            className="bg-white text-gray-900 px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-gray-100 transition-colors flex items-center gap-2 shadow-lg shadow-white/10"
+          >
+            <Plus size={18} /> Novo Método
+          </button>
+        </div>
+      </div>
 
       {showForm && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
@@ -425,7 +429,7 @@ export default function SettingsPage() {
       ) : (
         <div className="space-y-3">
           {methods.map((m) => (
-            <div key={m.id} className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm">
+            <div key={m.id} className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-all">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className={`p-2 rounded-xl ${m.is_card ? 'bg-purple-100 text-purple-600' : 'bg-blue-100 text-blue-600'}`}>
@@ -455,10 +459,10 @@ export default function SettingsPage() {
       )}
 
       {/* ─── BACKUP DE DADOS ──────────────────────────────── */}
-      <div className="mt-10 pt-8 border-t border-gray-200">
+      <div className="mt-8 bg-white p-5 md:p-6 rounded-3xl border border-gray-100 shadow-sm">
         <div className="flex items-center gap-3 mb-2">
-          <FileSpreadsheet size={22} className="text-blue-600" />
-          <h2 className="text-xl font-extrabold text-gray-900">Backup de Dados</h2>
+          <div className="p-2 bg-blue-50 rounded-xl"><FileSpreadsheet size={18} className="text-blue-600" /></div>
+          <h2 className="text-lg font-extrabold text-gray-900">Backup de Dados</h2>
         </div>
         <p className="text-sm text-gray-500 mb-6">
           Exporte ou importe os dados da sua loja em formato .xls (Excel) ou .csv.
@@ -468,13 +472,13 @@ export default function SettingsPage() {
           <button
             onClick={handleExport}
             disabled={exporting}
-            className="flex items-center gap-2 px-5 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-5 py-3 bg-gray-900 text-white font-bold rounded-xl hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
           >
             {exporting ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />}
             {exporting ? 'Exportando...' : 'Exportar Dados'}
           </button>
 
-          <label className={`flex items-center gap-2 px-5 py-3 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 transition-colors cursor-pointer ${importing ? 'opacity-50 cursor-not-allowed' : ''}`}>
+          <label className={`flex items-center gap-2 px-5 py-3 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 transition-colors cursor-pointer shadow-sm ${importing ? 'opacity-50 cursor-not-allowed' : ''}`}>
             {importing ? <Loader2 size={18} className="animate-spin" /> : <Upload size={18} />}
             {importing ? 'Importando...' : 'Importar Planilha'}
             <input type="file" accept=".csv,.xls" onChange={handleImport} disabled={importing} className="hidden" />
@@ -507,6 +511,7 @@ export default function SettingsPage() {
             <p className="text-xs text-amber-600 mt-2">Importante: mantenha a primeira linha (cabeçalho das colunas) inalterada.</p>
           </div>
         </details>
+      </div>
       </div>
     </div>
   );

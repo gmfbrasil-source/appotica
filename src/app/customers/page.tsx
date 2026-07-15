@@ -174,32 +174,46 @@ export default function CustomersPage() {
   }
 
   return (
-    <div className="p-4 md:p-6 max-w-4xl mx-auto pb-24">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Clientes</h1>
-        <button
-          onClick={() => { setFormData({ name: '', phone: '', email: '', cpf: '', cnpj: '', address: '' }); setShowForm(true); }}
-          className="bg-blue-600 text-white p-2 rounded-full shadow-lg hover:bg-blue-700 transition-colors"
-        >
-          <Plus size={24} />
-        </button>
+    <div className="min-h-screen bg-gray-50/50">
+      <div className="max-w-4xl mx-auto p-4 md:p-6 lg:p-8 pb-24">
+
+      {/* HEADER ESCURO */}
+      <div className="bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 rounded-3xl p-5 md:p-6 mb-6 text-white">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <p className="text-gray-400 text-xs font-medium uppercase tracking-wider mb-1">Cadastros</p>
+            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">Clientes</h1>
+            <p className="text-gray-400 text-sm mt-1">
+              Gerencie seus clientes e acompanhe compras
+            </p>
+          </div>
+          <button
+            onClick={() => { setFormData({ name: '', phone: '', email: '', cpf: '', cnpj: '', address: '' }); setShowForm(true); }}
+            className="bg-white text-gray-900 px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-gray-100 transition-colors flex items-center gap-2 shadow-lg shadow-white/10"
+          >
+            <Plus size={18} /> Novo Cliente
+          </button>
+        </div>
       </div>
 
-      <div className="relative mb-6">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-        <input
-          type="text"
-          placeholder="Buscar por nome, CPF ou telefone..."
-          className="w-full pl-10 p-3 bg-gray-100 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-gray-950"
-          value={searchQuery}
-          onChange={(e) => {
-            setSearchQuery(e.target.value);
-            if (selectedCustomer) {
-              setSelectedCustomer(null);
-              setExpandedFinSection(null);
-            }
-          }}
-        />
+      {/* BUSCA */}
+      <div className="bg-white p-4 rounded-3xl border border-gray-100 shadow-sm mb-6">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+          <input
+            type="text"
+            placeholder="Buscar por nome, CPF ou telefone..."
+            className="w-full pl-10 p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-gray-950 text-sm"
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              if (selectedCustomer) {
+                setSelectedCustomer(null);
+                setExpandedFinSection(null);
+              }
+            }}
+          />
+        </div>
       </div>
 
       {showForm && (
@@ -252,7 +266,7 @@ export default function CustomersPage() {
             <div key={customer.id}>
               <div
                 onClick={() => handleCustomerClick(customer)}
-                className="flex items-center p-4 bg-white rounded-xl border border-gray-100 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
+                className="flex items-center p-4 bg-white rounded-2xl border border-gray-100 shadow-sm cursor-pointer hover:shadow-md transition-all"
               >
                 <div className="bg-blue-100 p-2 rounded-full mr-4">
                   <User size={20} className="text-blue-600" />
@@ -589,6 +603,7 @@ export default function CustomersPage() {
             {searchQuery ? 'Nenhum cliente encontrado para esta busca.' : 'Nenhum cliente cadastrado.'}
           </div>
         )}
+      </div>
       </div>
     </div>
   );
