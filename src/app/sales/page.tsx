@@ -25,6 +25,12 @@ function getLocalDate(date?: Date): string {
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 }
 
+// Parse "YYYY-MM-DD" em timezone local (evita que new Date("2026-06-01") interprete como UTC)
+function parseDateStr(dateStr: string): Date {
+  const parts = dateStr.split('-');
+  return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+}
+
 function AccordionSection({ num, title, done, isOpen, canOpen, onToggle, children, summary }: {
   num: number;
   title: string;
@@ -404,9 +410,9 @@ export default function SalesPage() {
       if (isNaN(totalVal)) throw new Error('Insira um valor total válido para a venda.');
 
       // Validação da data da venda
-      const saleDateObj = new Date(saleDetails.saleDate + 'T12:00:00');
+      const saleDateObj = parseDateStr(saleDetails.saleDate);
       if (isNaN(saleDateObj.getTime())) throw new Error('Data da venda inválida.');
-      const dateCheck = saleDateObj.toISOString().split('T')[0];
+      const dateCheck = getLocalDate(saleDateObj);
       if (dateCheck !== saleDetails.saleDate) throw new Error(`Data da venda inválida: ${saleDetails.saleDate} não existe (ex: 31/06 não é válido).`);
 
       // 4. Cadastrar ou atualizar Ordem de Serviço (O.S.)
@@ -480,7 +486,7 @@ export default function SalesPage() {
 
       // 5. Cadastrar lançamentos financeiros
       const financialInserts = [];
-       const hoje = new Date(saleDetails.saleDate);
+       const hoje = parseDateStr(saleDetails.saleDate);
        const hojeStr = getLocalDate(hoje);
        const entrada = Math.min(parseFloat(payment.downPayment) || 0, totalVal);
        const restante = Math.round((totalVal - entrada) * 100) / 100;
@@ -536,7 +542,7 @@ export default function SalesPage() {
           // Demais métodos (Pix, Dinheiro, Boleto, Carnê)
           // Entrada (só se > 0)
           if (entrada > 0) {
-            const entryDue = instCount > 0 ? new Date(firstDueDate) : hoje;
+            const entryDue = instCount > 0 ? parseDateStr(firstDueDate) : hoje;
             financialInserts.push({
               shop_id: shopId, type: 'Income',
                description: `${osPrefix} (Entrada)`,
@@ -551,12 +557,12 @@ export default function SalesPage() {
 
           // Parcelas
           if (instCount > 0 && restante > 0) {
-            const firstDate = new Date(firstDueDate);
+            const firstDate = parseDateStr(firstDueDate);
             for (let i = 0; i < instCount; i++) {
               const baseValor = restante / instCount;
               let valorParcela = Math.floor(baseValor * 100) / 100;
               if (i === instCount - 1) valorParcela = Math.round((restante - valorParcela * (instCount - 1)) * 100) / 100;
-              const due = new Date(firstDate);
+              const due = parseDateStr(firstDueDate);
               due.setDate(due.getDate() + i * 30);
               financialInserts.push({
                 shop_id: shopId, type: 'Income',
@@ -601,12 +607,12 @@ export default function SalesPage() {
       // Monta dados das parcelas para o carnê
       const installmentData: { num: number; due: string; amount: number }[] = [];
       if (!selectedMethod?.is_card && instCount > 0 && restante > 0) {
-        const firstDate = new Date(firstDueDate);
+        const firstDate = parseDateStr(firstDueDate);
         for (let i = 0; i < instCount; i++) {
           const baseValor = restante / instCount;
           let valorParcela = Math.floor(baseValor * 100) / 100;
           if (i === instCount - 1) valorParcela = Math.round((restante - valorParcela * (instCount - 1)) * 100) / 100;
-          const due = new Date(firstDate);
+          const due = parseDateStr(firstDueDate);
           due.setDate(due.getDate() + i * 30);
           installmentData.push({ num: i + 1, due: due.toLocaleDateString('pt-BR'), amount: valorParcela });
         }

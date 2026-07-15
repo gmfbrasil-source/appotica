@@ -65,8 +65,6 @@ export default function Dashboard() {
     const overdueIncome = arr.filter((r: any) => r.status === 'Pending' && r.type === 'Income' && r.due_date < todayStr).reduce((acc: number, r: any) => acc + r.amount, 0);
     const overdueExpense = arr.filter((r: any) => r.status === 'Pending' && r.type === 'Expense' && r.due_date < todayStr).reduce((acc: number, r: any) => acc + r.amount, 0);
 
-    const periodIncome = receivedIncome;
-
     setStats(prev => ({ ...prev, grossSales, receivedIncome, pendingIncome, pendingExpense, overdueIncome, overdueExpense }));
   }
 
