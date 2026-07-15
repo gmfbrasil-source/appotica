@@ -6,6 +6,18 @@ import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Phone, MessageCircle, Calendar, DollarSign, AlertCircle, ShoppingBag } from 'lucide-react';
 import Link from 'next/link';
 
+function parseLocalDate(dateStr: string): Date {
+  if (!dateStr) return new Date();
+  const parts = dateStr.split('T')[0].split('-');
+  return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+}
+
+function formatLocalDate(dateStr: string): string {
+  if (!dateStr) return '---';
+  const d = parseLocalDate(dateStr);
+  return d.toLocaleDateString('pt-BR');
+}
+
 export default function CustomerDetailsPage() {
   const params = useParams();
   const router = useRouter();
@@ -74,8 +86,9 @@ export default function CustomerDetailsPage() {
   const overdueRecords = (financials || []).filter(f => {
     if (!f || !f.due_date) return false;
     try {
-      const dueDate = new Date(f.due_date);
+      const dueDate = parseLocalDate(f.due_date);
       const today = new Date();
+      today.setHours(0, 0, 0, 0);
       return f.status === 'Pending' && f.type === 'Income' && dueDate < today;
     } catch {
       return false;
@@ -223,7 +236,7 @@ export default function CustomerDetailsPage() {
                     </div>
                     <div>
                        <p className="font-bold text-gray-800">{order.os_number ? `Nº ${order.os_number}` : `O.S. #${order.id.slice(0,8)}`}</p>
-                      <p className="text-xs text-gray-500">{new Date(order.created_at).toLocaleDateString('pt-BR')}</p>
+                       <p className="text-xs text-gray-500">{formatLocalDate(order.sale_date || order.created_at?.split('T')[0])}</p>
                     </div>
                   </div>
                   <div className="text-right">
@@ -265,7 +278,7 @@ export default function CustomerDetailsPage() {
                           <span className="ml-2 text-[10px] bg-gray-100 text-gray-600 font-bold px-1.5 py-0.5 rounded">OS #{fin.service_orders.os_number}</span>
                         )}
                       </td>
-                      <td className="py-3 px-2 text-gray-500">{fin?.due_date ? new Date(fin.due_date).toLocaleDateString('pt-BR') : '---'}</td>
+                      <td className="py-3 px-2 text-gray-500">{formatLocalDate(fin?.due_date)}</td>
                       <td className="py-3 px-2 font-bold">{formatCurrency(fin?.amount || 0)}</td>
                       <td className="py-3 px-2">
                         <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase ${

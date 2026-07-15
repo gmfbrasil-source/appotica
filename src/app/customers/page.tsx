@@ -5,6 +5,12 @@ import { formatCurrency, companyInfo } from '@/lib/format';
 import { Plus, Search, User, ChevronDown, MessageCircle, AlertCircle, Calendar, DollarSign, ShoppingBag, X, Phone, Mail, FileText, CreditCard, CheckCircle, Clock, ArrowRight, MapPin, Pencil } from 'lucide-react';
 import Link from 'next/link';
 
+function parseLocalDate(dateStr: string): Date {
+  if (!dateStr) return new Date();
+  const parts = dateStr.split('T')[0].split('-');
+  return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+}
+
 export default function CustomersPage() {
   const [customers, setCustomers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -538,7 +544,7 @@ export default function CustomersPage() {
                               <Link key={os.id} href={`/os/${os.id}`} className="flex items-center justify-between p-2.5 bg-gray-50 rounded-xl border border-gray-100 hover:bg-gray-100 transition-colors">
                                 <div>
                                    <p className="text-sm font-semibold text-gray-800">{os.os_number ? `Nº ${os.os_number}` : `O.S. #${os.id.slice(0, 8)}`}</p>
-                                  <p className="text-xs text-gray-500">{new Date(os.created_at).toLocaleDateString('pt-BR')}</p>
+                                   <p className="text-xs text-gray-500">{parseLocalDate(os.sale_date || os.created_at?.split('T')[0]).toLocaleDateString('pt-BR')}</p>
                                 </div>
                                 <div className="flex items-center gap-2">
                                   <p className="text-sm font-bold text-blue-600">{formatCurrency(Number(os.total_value))}</p>
