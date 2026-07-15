@@ -350,7 +350,7 @@ export default function CustomersPage() {
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                         <button onClick={() => toggleFinSection('paid')} className={`text-left p-3 rounded-xl border transition-all overflow-hidden ${expandedFinSection === 'paid' ? 'bg-green-100 border-green-300 shadow-sm' : 'bg-green-50 border-green-100 hover:bg-green-100'}`}>
                           <p className="text-green-600 text-[10px] font-medium uppercase">Recebido</p>
-                          <p className="text-lg font-bold text-green-700 truncate">{formatCurrency(totalPaidIncome + totalPaidExpense)}</p>
+                          <p className="text-lg font-bold text-green-700 truncate">{formatCurrency(totalPaidIncome)}</p>
                         </button>
                         <button onClick={() => toggleFinSection('to_receive')} className={`text-left p-3 rounded-xl border transition-all overflow-hidden ${expandedFinSection === 'to_receive' ? 'bg-yellow-100 border-yellow-300 shadow-sm' : 'bg-yellow-50 border-yellow-100 hover:bg-yellow-100'}`}>
                           <p className="text-yellow-600 text-[10px] font-medium uppercase">A Receber</p>

@@ -11,6 +11,8 @@ export default function Dashboard() {
    const [stats, setStats] = useState({
      customers: 0,
      activeOS: 0,
+     grossSales: 0,
+     receivedIncome: 0,
      pendingIncome: 0,
      pendingExpense: 0,
      monthIncome: 0,
@@ -53,6 +55,8 @@ export default function Dashboard() {
       const todayStr = new Date().toISOString().split('T')[0];
       const monthStartStr = todayStr.slice(0, 7);
 
+      const grossSales = finArr.filter((r: any) => r.type === 'Income').reduce((acc: number, r: any) => acc + (r.amount || 0), 0);
+      const receivedIncome = finArr.filter((r: any) => r.status === 'Paid' && r.type === 'Income').reduce((acc: number, r: any) => acc + r.amount, 0);
       const pendingIncome = finArr.filter((r: any) => r.status === 'Pending' && r.type === 'Income').reduce((acc: number, r: any) => acc + r.amount, 0);
       const pendingExpense = finArr.filter((r: any) => r.status === 'Pending' && r.type === 'Expense').reduce((acc: number, r: any) => acc + r.amount, 0);
       
@@ -64,6 +68,8 @@ export default function Dashboard() {
       setStats({
         customers: custRes.count || 0,
         activeOS: osRes.count || 0,
+        grossSales,
+        receivedIncome,
         pendingIncome,
         pendingExpense,
         monthIncome,
@@ -169,6 +175,31 @@ export default function Dashboard() {
         </Link>
        </div>
 
+       {/* RESUMO DE VENDAS */}
+       <div className="grid grid-cols-3 gap-3 mb-6">
+         <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
+           <div className="bg-indigo-50 p-2.5 rounded-xl w-fit mb-3">
+             <ShoppingBag size={20} className="text-indigo-600" />
+           </div>
+           <p className="text-gray-500 text-xs font-medium">Total Bruto de Vendas</p>
+           <p className="text-2xl font-black text-gray-900 mt-0.5">{formatCurrency(stats.grossSales)}</p>
+         </div>
+         <Link href={`/finance?type=Income&status=Paid`} className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+           <div className="bg-green-50 p-2.5 rounded-xl w-fit mb-3">
+             <DollarSign size={20} className="text-green-600" />
+           </div>
+           <p className="text-gray-500 text-xs font-medium">Valor Recebido</p>
+           <p className="text-2xl font-black text-gray-900 mt-0.5">{formatCurrency(stats.receivedIncome)}</p>
+         </Link>
+         <Link href={`/finance?type=Income&status=Pending`} className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+           <div className="bg-amber-50 p-2.5 rounded-xl w-fit mb-3">
+             <DollarSign size={20} className="text-amber-600" />
+           </div>
+           <p className="text-gray-500 text-xs font-medium">A Receber</p>
+           <p className="text-2xl font-black text-gray-900 mt-0.5">{formatCurrency(stats.pendingIncome)}</p>
+         </Link>
+       </div>
+
        {/* ALERTA DE DÍVIDAS / INADIMPLÊNCIA */}
        {(stats.overdueIncome > 0 || stats.overdueExpense > 0) && (
          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6 animate-pulse">
@@ -262,11 +293,11 @@ export default function Dashboard() {
           <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm">
             <h2 className="text-base font-bold text-gray-800 mb-3">Resumo Financeiro</h2>
             <div className="space-y-3">
-              <Link href="/finance" className="flex items-center justify-between p-2 hover:bg-gray-50 rounded-xl transition-colors">
+              <Link href="/finance?type=Income&status=Pending" className="flex items-center justify-between p-2 hover:bg-gray-50 rounded-xl transition-colors">
                 <span className="text-sm text-gray-600">A Receber</span>
                 <span className="text-sm font-bold text-amber-600">{formatCurrency(stats.pendingIncome)}</span>
               </Link>
-              <Link href="/finance" className="flex items-center justify-between p-2 hover:bg-gray-50 rounded-xl transition-colors">
+              <Link href="/finance?type=Expense&status=Pending" className="flex items-center justify-between p-2 hover:bg-gray-50 rounded-xl transition-colors">
                 <span className="text-sm text-gray-600">A Pagar</span>
                 <span className="text-sm font-bold text-red-600">{formatCurrency(stats.pendingExpense)}</span>
               </Link>

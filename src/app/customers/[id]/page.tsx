@@ -64,11 +64,15 @@ export default function CustomerDetailsPage() {
   }
 
   const totalPaid = (financials || []).reduce((acc, curr) => {
-    return acc + (curr?.status === 'Paid' ? (Number(curr?.amount) || 0) : 0);
+    return acc + (curr?.status === 'Paid' && curr?.type === 'Income' ? (Number(curr?.amount) || 0) : 0);
   }, 0);
 
   const totalPending = (financials || []).reduce((acc, curr) => {
-    return acc + (curr?.status === 'Pending' ? (Number(curr?.amount) || 0) : 0);
+    return acc + (curr?.status === 'Pending' && curr?.type === 'Income' ? (Number(curr?.amount) || 0) : 0);
+  }, 0);
+
+  const totalPaidExpenses = (financials || []).reduce((acc, curr) => {
+    return acc + (curr?.status === 'Paid' && curr?.type === 'Expense' ? (Number(curr?.amount) || 0) : 0);
   }, 0);
 
   const overdueRecords = (financials || []).filter(f => {
@@ -76,7 +80,7 @@ export default function CustomerDetailsPage() {
     try {
       const dueDate = new Date(f.due_date);
       const today = new Date();
-      return f.status === 'Pending' && dueDate < today;
+      return f.status === 'Pending' && f.type === 'Income' && dueDate < today;
     } catch {
       return false;
     }

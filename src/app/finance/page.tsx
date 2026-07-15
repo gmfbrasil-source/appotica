@@ -44,6 +44,15 @@ export default function FinancePage() {
   const [showSuggestions, setShowSuggestions] = useState(false);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const typeParam = params.get('type');
+    const statusParam = params.get('status');
+    const dateStartParam = params.get('dateStart');
+    const dateEndParam = params.get('dateEnd');
+    if (typeParam === 'Income' || typeParam === 'Expense') setFilterType(typeParam);
+    if (statusParam === 'Pending' || statusParam === 'Paid') setFilterStatus(statusParam);
+    if (dateStartParam) setFilterDateStart(dateStartParam);
+    if (dateEndParam) setFilterDateEnd(dateEndParam);
     fetchRecords();
     fetchCustomers();
   }, []);
