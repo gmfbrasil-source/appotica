@@ -70,8 +70,8 @@ export default function Dashboard() {
       return refDate >= dates.start && refDate <= dates.end;
     };
     const receivedIncome = arr.filter((r: any) => r.status === 'Paid' && r.type === 'Income' && withinFinPeriod(r)).reduce((acc: number, r: any) => acc + r.amount, 0);
-    const pendingIncome = arr.filter((r: any) => r.status === 'Pending' && r.type === 'Income').reduce((acc: number, r: any) => acc + r.amount, 0);
-    const pendingExpense = arr.filter((r: any) => r.status === 'Pending' && r.type === 'Expense').reduce((acc: number, r: any) => acc + r.amount, 0);
+    const pendingIncome = arr.filter((r: any) => r.status === 'Pending' && r.type === 'Income' && withinFinPeriod(r)).reduce((acc: number, r: any) => acc + r.amount, 0);
+    const pendingExpense = arr.filter((r: any) => r.status === 'Pending' && r.type === 'Expense' && withinFinPeriod(r)).reduce((acc: number, r: any) => acc + r.amount, 0);
 
     const overdueIncome = arr.filter((r: any) => r.status === 'Pending' && r.type === 'Income' && r.due_date < todayStr).reduce((acc: number, r: any) => acc + r.amount, 0);
     const overdueExpense = arr.filter((r: any) => r.status === 'Pending' && r.type === 'Expense' && r.due_date < todayStr).reduce((acc: number, r: any) => acc + r.amount, 0);
@@ -188,35 +188,35 @@ export default function Dashboard() {
         </div>
       </div>
 
-       {/* CARDS CLICÁVEIS */}
-       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-         <Link href="/customers" className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-           <div className="bg-blue-50 p-2.5 rounded-xl w-fit mb-3">
-             <Users size={20} className="text-blue-600" />
+       {/* INDICADORES — mobile-first: 2 colunas no mobile, 4 no desktop */}
+       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+         <Link href="/customers" className="bg-white p-4 md:p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+           <div className="bg-blue-50 p-2 md:p-2.5 rounded-xl w-fit mb-2 md:mb-3">
+             <Users size={18} className="text-blue-600" />
            </div>
-           <p className="text-gray-500 text-xs font-medium">Clientes</p>
-           <p className="text-2xl font-black text-gray-900 mt-0.5">{stats.customers}</p>
+           <p className="text-gray-500 text-[11px] md:text-xs font-medium">Clientes</p>
+           <p className="text-xl md:text-2xl font-black text-gray-900 mt-0.5">{stats.customers}</p>
          </Link>
-         <Link href="/os" className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-           <div className="bg-emerald-50 p-2.5 rounded-xl w-fit mb-3">
-             <ClipboardList size={20} className="text-emerald-600" />
+         <Link href="/os" className="bg-white p-4 md:p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+           <div className="bg-emerald-50 p-2 md:p-2.5 rounded-xl w-fit mb-2 md:mb-3">
+             <ClipboardList size={18} className="text-emerald-600" />
            </div>
-           <p className="text-gray-500 text-xs font-medium">O.S. Ativas</p>
-           <p className="text-2xl font-black text-gray-900 mt-0.5">{stats.activeOS}</p>
+           <p className="text-gray-500 text-[11px] md:text-xs font-medium">O.S. Ativas</p>
+           <p className="text-xl md:text-2xl font-black text-gray-900 mt-0.5">{stats.activeOS}</p>
          </Link>
-         <Link href="/finance?type=Income&status=Pending" className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-           <div className="bg-amber-50 p-2.5 rounded-xl w-fit mb-3">
-             <DollarSign size={20} className="text-amber-600" />
+         <Link href="/finance?type=Income&status=Pending" className="bg-white p-4 md:p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+           <div className="bg-amber-50 p-2 md:p-2.5 rounded-xl w-fit mb-2 md:mb-3">
+             <DollarSign size={18} className="text-amber-600" />
            </div>
-           <p className="text-gray-500 text-xs font-medium">A Receber</p>
-           <p className="text-2xl font-black text-gray-900 mt-0.5">{formatCurrency(stats.pendingIncome)}</p>
+           <p className="text-gray-500 text-[11px] md:text-xs font-medium">A Receber</p>
+           <p className="text-xl md:text-2xl font-black text-gray-900 mt-0.5">{formatCurrency(stats.pendingIncome)}</p>
          </Link>
-         <Link href="/finance?type=Expense&status=Pending" className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-           <div className="bg-red-50 p-2.5 rounded-xl w-fit mb-3">
-             <FileText size={20} className="text-red-600" />
+         <Link href="/finance?type=Expense&status=Pending" className="bg-white p-4 md:p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+           <div className="bg-red-50 p-2 md:p-2.5 rounded-xl w-fit mb-2 md:mb-3">
+             <FileText size={18} className="text-red-600" />
            </div>
-           <p className="text-gray-500 text-xs font-medium">A Pagar</p>
-           <p className="text-2xl font-black text-gray-900 mt-0.5">{formatCurrency(stats.pendingExpense)}</p>
+           <p className="text-gray-500 text-[11px] md:text-xs font-medium">A Pagar</p>
+           <p className="text-xl md:text-2xl font-black text-gray-900 mt-0.5">{formatCurrency(stats.pendingExpense)}</p>
          </Link>
         </div>
 
@@ -227,10 +227,10 @@ export default function Dashboard() {
             <button
               key={p}
               onClick={() => setPeriod(p)}
-              className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all ${
-                period === p
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+               className={`px-2 md:px-3 py-1 md:py-1.5 text-[11px] md:text-xs font-bold rounded-xl transition-all ${
+                 period === p
+                   ? 'bg-blue-600 text-white shadow-sm'
+                   : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
               }`}
             >
               {getPeriodLabel(p)}
@@ -238,37 +238,29 @@ export default function Dashboard() {
           ))}
         </div>
 
-        {/* RESUMO DE VENDAS — em destaque total bruto, recebido, a receber */}
-        <div className="grid grid-cols-3 gap-3 mb-6">
-          <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
-            <div className="bg-indigo-50 p-2.5 rounded-xl w-fit mb-3">
-              <ShoppingBag size={20} className="text-indigo-600" />
+        {/* RESUMO DE VENDAS — mobile: empilhado, desktop: lado a lado */}
+        <div className="grid grid-cols-2 md:grid-cols-2 gap-3 mb-6">
+          <div className="bg-white p-4 md:p-5 rounded-2xl border border-gray-100 shadow-sm">
+            <div className="bg-indigo-50 p-2 md:p-2.5 rounded-xl w-fit mb-2 md:mb-3">
+              <ShoppingBag size={18} className="text-indigo-600" />
             </div>
-            <p className="text-gray-500 text-xs font-medium">Total Bruto de Vendas</p>
-            <p className="text-2xl font-black text-gray-900 mt-0.5">{formatCurrency(stats.grossSales)}</p>
+            <p className="text-gray-500 text-[11px] md:text-xs font-medium">Total Bruto de Vendas</p>
+            <p className="text-xl md:text-2xl font-black text-gray-900 mt-0.5">{formatCurrency(stats.grossSales)}</p>
             <p className="text-[10px] text-gray-400 mt-1">Faturado no período</p>
           </div>
-          <Link href={`/finance?type=Income&status=Paid`} className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-            <div className="bg-green-50 p-2.5 rounded-xl w-fit mb-3">
-              <DollarSign size={20} className="text-green-600" />
+          <Link href={`/finance?type=Income&status=Paid`} className="bg-white p-4 md:p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+            <div className="bg-green-50 p-2 md:p-2.5 rounded-xl w-fit mb-2 md:mb-3">
+              <DollarSign size={18} className="text-green-600" />
             </div>
-            <p className="text-gray-500 text-xs font-medium">Valor Recebido</p>
-            <p className="text-2xl font-black text-gray-900 mt-0.5">{formatCurrency(stats.receivedIncome)}</p>
+            <p className="text-gray-500 text-[11px] md:text-xs font-medium">Valor Recebido</p>
+            <p className="text-xl md:text-2xl font-black text-gray-900 mt-0.5">{formatCurrency(stats.receivedIncome)}</p>
             <p className="text-[10px] text-gray-400 mt-1">Recebido no período</p>
-          </Link>
-          <Link href={`/finance?type=Income&status=Pending`} className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-            <div className="bg-amber-50 p-2.5 rounded-xl w-fit mb-3">
-              <DollarSign size={20} className="text-amber-600" />
-            </div>
-            <p className="text-gray-500 text-xs font-medium">A Receber</p>
-            <p className="text-2xl font-black text-gray-900 mt-0.5">{formatCurrency(stats.pendingIncome)}</p>
-            <p className="text-[10px] text-gray-400 mt-1">Total pendente</p>
           </Link>
         </div>
 
        {/* ALERTA DE DÍVIDAS / INADIMPLÊNCIA */}
        {(stats.overdueIncome > 0 || stats.overdueExpense > 0) && (
-         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6 animate-pulse">
+         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
            {stats.overdueIncome > 0 && (
              <div className="bg-orange-50 border border-orange-200 p-4 rounded-2xl flex items-center gap-3">
                <div className="bg-orange-100 p-2 rounded-lg text-orange-600">
@@ -296,10 +288,10 @@ export default function Dashboard() {
 
        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* GRÁFICO */}
-        <div className="lg:col-span-2 bg-white p-5 rounded-3xl border border-gray-100 shadow-sm">
-          <h2 className="text-base font-bold text-gray-800 mb-4">Fluxo Financeiro (6 meses)</h2>
+        <div className="lg:col-span-2 bg-white p-4 md:p-5 rounded-3xl border border-gray-100 shadow-sm">
+          <h2 className="text-sm md:text-base font-bold text-gray-800 mb-4">Fluxo Financeiro (6 meses)</h2>
           {chartData.some(d => d.revenue > 0 || d.expenses > 0) ? (
-            <div className="h-72 w-full">
+            <div className="h-56 md:h-72 w-full">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={chartData}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
@@ -356,19 +348,7 @@ export default function Dashboard() {
             </Link>
           </div>
 
-          <div className="bg-white p-5 rounded-3xl border border-gray-100 shadow-sm">
-            <h2 className="text-base font-bold text-gray-800 mb-3">Resumo Financeiro</h2>
-            <div className="space-y-3">
-              <Link href="/finance?type=Income&status=Pending" className="flex items-center justify-between p-2 hover:bg-gray-50 rounded-xl transition-colors">
-                <span className="text-sm text-gray-600">A Receber</span>
-                <span className="text-sm font-bold text-amber-600">{formatCurrency(stats.pendingIncome)}</span>
-              </Link>
-              <Link href="/finance?type=Expense&status=Pending" className="flex items-center justify-between p-2 hover:bg-gray-50 rounded-xl transition-colors">
-                <span className="text-sm text-gray-600">A Pagar</span>
-                <span className="text-sm font-bold text-red-600">{formatCurrency(stats.pendingExpense)}</span>
-              </Link>
-            </div>
-          </div>
+          {/* SEM RESUMO FINANCEIRO — removido por redundância (já está nos cards acima) */}
         </div>
       </div>
     </div>
