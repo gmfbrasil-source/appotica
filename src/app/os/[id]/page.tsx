@@ -6,6 +6,11 @@ import { formatCurrency, companyInfo } from '@/lib/format';
 import { Printer, ArrowLeft, FileText, User, Calendar, Package, Trash2, CheckCircle, Clock, DollarSign, ChevronDown, Pencil } from 'lucide-react';
 import Link from 'next/link';
 
+function getLocalDate(date?: Date): string {
+  const d = date || new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
 const STATUS_OPTIONS = [
   { value: 'Open', label: 'Aberto', color: 'bg-gray-100 text-gray-600' },
   { value: 'In_Laboratory', label: 'Laboratório', color: 'bg-blue-100 text-blue-600' },
@@ -82,7 +87,7 @@ export default function OSDetailPage() {
       if (receiveNow) {
         await supabase
           .from('financial_records')
-          .update({ status: 'Paid', payment_date: new Date().toISOString().split('T')[0] })
+          .update({ status: 'Paid', payment_date: getLocalDate() })
           .eq('id', pendingEntry.id);
       }
     }
@@ -107,7 +112,7 @@ export default function OSDetailPage() {
     if (!confirm('Receber esta entrada?')) return;
     const { error } = await supabase
       .from('financial_records')
-      .update({ status: 'Paid', payment_date: new Date().toISOString().split('T')[0] })
+      .update({ status: 'Paid', payment_date: getLocalDate() })
       .eq('id', recordId);
 
     if (!error) {

@@ -7,6 +7,11 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 
 import { formatCurrency } from '@/lib/format';
 
+function getLocalDate(date?: Date): string {
+  const d = date || new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
 export default function Dashboard() {
   const [period, setPeriod] = useState<'7d' | '15d' | '30d' | 'month' | 'all'>('month');
     const [stats, setStats] = useState({
@@ -42,14 +47,13 @@ export default function Dashboard() {
     else if (p === '30d') start.setDate(start.getDate() - 30);
     else if (p === 'month') start.setDate(1);
     else return { start: null, end: null }; // 'all'
-    return { start: start.toISOString().split('T')[0], end: today.toISOString().split('T')[0] };
+    return { start: getLocalDate(start), end: getLocalDate(today) };
   }
 
   function computeStats(p: string) {
     const arr = finArrRef.current;
     const dates = getPeriodDates(p);
-    const todayStr = new Date().toISOString().split('T')[0];
-    const monthStartStr = todayStr.slice(0, 7);
+    const todayStr = getLocalDate();
 
     const withinPeriod = (r: any) => {
       if (!dates.start) return true;

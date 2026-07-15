@@ -23,7 +23,7 @@ export default function FinancePage() {
     type: 'Income',
     description: '',
     amount: '',
-    due_date: new Date().toISOString().split('T')[0],
+    due_date: getLocalDate(),
     status: 'Pending'
   });
 
@@ -201,7 +201,7 @@ export default function FinancePage() {
       type: 'Income',
       description: '',
       amount: '',
-      due_date: new Date().toISOString().split('T')[0],
+      due_date: getLocalDate(),
       status: 'Pending'
     });
     setSupplierSearch('');
