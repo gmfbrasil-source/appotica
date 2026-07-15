@@ -403,6 +403,12 @@ export default function SalesPage() {
       const totalVal = parseFloat(saleDetails.total_value);
       if (isNaN(totalVal)) throw new Error('Insira um valor total válido para a venda.');
 
+      // Validação da data da venda
+      const saleDateObj = new Date(saleDetails.saleDate + 'T12:00:00');
+      if (isNaN(saleDateObj.getTime())) throw new Error('Data da venda inválida.');
+      const dateCheck = saleDateObj.toISOString().split('T')[0];
+      if (dateCheck !== saleDetails.saleDate) throw new Error(`Data da venda inválida: ${saleDetails.saleDate} não existe (ex: 31/06 não é válido).`);
+
       // 4. Cadastrar ou atualizar Ordem de Serviço (O.S.)
       let osData: any = null;
       if (geraOS) {
@@ -429,16 +435,46 @@ export default function SalesPage() {
             .eq('id', editOrderId)
             .select('*, customers(name, phone, cpf)')
             .single();
-          if (osErr) throw osErr;
-          osData = osResult;
+          if (osErr) {
+            // Se a coluna sale_date ainda não existir, tenta sem ela
+            if (osErr.message?.includes('sale_date')) {
+              delete osPayload.sale_date;
+              const { data: retry, error: retryErr } = await supabase
+                .from('service_orders')
+                .update(osPayload)
+                .eq('id', editOrderId)
+                .select('*, customers(name, phone, cpf)')
+                .single();
+              if (retryErr) throw retryErr;
+              osData = retry;
+            } else {
+              throw osErr;
+            }
+          } else {
+            osData = osResult;
+          }
         } else {
           const { data: osResult, error: osErr } = await supabase
             .from('service_orders')
             .insert([osPayload])
             .select('*, customers(name, phone, cpf)')
             .single();
-          if (osErr) throw osErr;
-          osData = osResult;
+          if (osErr) {
+            if (osErr.message?.includes('sale_date')) {
+              delete osPayload.sale_date;
+              const { data: retry, error: retryErr } = await supabase
+                .from('service_orders')
+                .insert([osPayload])
+                .select('*, customers(name, phone, cpf)')
+                .single();
+              if (retryErr) throw retryErr;
+              osData = retry;
+            } else {
+              throw osErr;
+            }
+          } else {
+            osData = osResult;
+          }
         }
       }
 

@@ -172,80 +172,83 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* CARDS CLICÁVEIS */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-        <Link href="/customers" className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-          <div className="bg-blue-50 p-2.5 rounded-xl w-fit mb-3">
-            <Users size={20} className="text-blue-600" />
-          </div>
-          <p className="text-gray-500 text-xs font-medium">Clientes</p>
-          <p className="text-2xl font-black text-gray-900 mt-0.5">{stats.customers}</p>
-        </Link>
-        <Link href="/os" className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-          <div className="bg-emerald-50 p-2.5 rounded-xl w-fit mb-3">
-            <ClipboardList size={20} className="text-emerald-600" />
-          </div>
-          <p className="text-gray-500 text-xs font-medium">O.S. Ativas</p>
-          <p className="text-2xl font-black text-gray-900 mt-0.5">{stats.activeOS}</p>
-        </Link>
-        <Link href="/finance" className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-          <div className="bg-amber-50 p-2.5 rounded-xl w-fit mb-3">
-            <DollarSign size={20} className="text-amber-600" />
-          </div>
-          <p className="text-gray-500 text-xs font-medium">A Receber</p>
-          <p className="text-2xl font-black text-gray-900 mt-0.5">{formatCurrency(stats.pendingIncome)}</p>
-        </Link>
-        <Link href="/caixa" className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-          <div className="bg-purple-50 p-2.5 rounded-xl w-fit mb-3">
-            <TrendingUp size={20} className="text-purple-600" />
-          </div>
-          <p className="text-gray-500 text-xs font-medium">Vendas no Período</p>
-          <p className="text-2xl font-black text-gray-900 mt-0.5">{formatCurrency(stats.grossSales)}</p>
-        </Link>
-       </div>
-
-       {/* FILTRO DE PERÍODO */}
-       <div className="flex flex-wrap items-center gap-2 mb-4">
-         <span className="text-xs font-medium text-gray-500 uppercase mr-1">Período:</span>
-         {(['7d', '15d', '30d', 'month', 'all'] as const).map(p => (
-           <button
-             key={p}
-             onClick={() => setPeriod(p)}
-             className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all ${
-               period === p
-                 ? 'bg-blue-600 text-white shadow-sm'
-                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-             }`}
-           >
-             {getPeriodLabel(p)}
-           </button>
-         ))}
-       </div>
-
-       {/* RESUMO DE VENDAS */}
-       <div className="grid grid-cols-3 gap-3 mb-6">
-         <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
-           <div className="bg-indigo-50 p-2.5 rounded-xl w-fit mb-3">
-             <ShoppingBag size={20} className="text-indigo-600" />
+       {/* CARDS CLICÁVEIS */}
+       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+         <Link href="/customers" className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+           <div className="bg-blue-50 p-2.5 rounded-xl w-fit mb-3">
+             <Users size={20} className="text-blue-600" />
            </div>
-           <p className="text-gray-500 text-xs font-medium">Total Bruto <span className="text-[9px] text-gray-400">({getPeriodLabel(period)})</span></p>
-           <p className="text-2xl font-black text-gray-900 mt-0.5">{formatCurrency(stats.grossSales)}</p>
-         </div>
-         <Link href={`/finance?type=Income&status=Paid`} className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-           <div className="bg-green-50 p-2.5 rounded-xl w-fit mb-3">
-             <DollarSign size={20} className="text-green-600" />
-           </div>
-           <p className="text-gray-500 text-xs font-medium">Valor Recebido <span className="text-[9px] text-gray-400">({getPeriodLabel(period)})</span></p>
-           <p className="text-2xl font-black text-gray-900 mt-0.5">{formatCurrency(stats.receivedIncome)}</p>
+           <p className="text-gray-500 text-xs font-medium">Clientes</p>
+           <p className="text-2xl font-black text-gray-900 mt-0.5">{stats.customers}</p>
          </Link>
-         <Link href={`/finance?type=Income&status=Pending`} className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+         <Link href="/os" className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+           <div className="bg-emerald-50 p-2.5 rounded-xl w-fit mb-3">
+             <ClipboardList size={20} className="text-emerald-600" />
+           </div>
+           <p className="text-gray-500 text-xs font-medium">O.S. Ativas</p>
+           <p className="text-2xl font-black text-gray-900 mt-0.5">{stats.activeOS}</p>
+         </Link>
+         <Link href="/finance?type=Income&status=Pending" className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
            <div className="bg-amber-50 p-2.5 rounded-xl w-fit mb-3">
              <DollarSign size={20} className="text-amber-600" />
            </div>
-           <p className="text-gray-500 text-xs font-medium">A Receber <span className="text-[9px] text-gray-400">(total)</span></p>
+           <p className="text-gray-500 text-xs font-medium">A Receber</p>
            <p className="text-2xl font-black text-gray-900 mt-0.5">{formatCurrency(stats.pendingIncome)}</p>
          </Link>
-       </div>
+         <Link href="/finance?type=Expense&status=Pending" className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+           <div className="bg-red-50 p-2.5 rounded-xl w-fit mb-3">
+             <FileText size={20} className="text-red-600" />
+           </div>
+           <p className="text-gray-500 text-xs font-medium">A Pagar</p>
+           <p className="text-2xl font-black text-gray-900 mt-0.5">{formatCurrency(stats.pendingExpense)}</p>
+         </Link>
+        </div>
+
+        {/* FILTRO DE PERÍODO */}
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          <span className="text-xs font-medium text-gray-500 uppercase mr-1">Período:</span>
+          {(['7d', '15d', '30d', 'month', 'all'] as const).map(p => (
+            <button
+              key={p}
+              onClick={() => setPeriod(p)}
+              className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all ${
+                period === p
+                  ? 'bg-blue-600 text-white shadow-sm'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              {getPeriodLabel(p)}
+            </button>
+          ))}
+        </div>
+
+        {/* RESUMO DE VENDAS — em destaque total bruto, recebido, a receber */}
+        <div className="grid grid-cols-3 gap-3 mb-6">
+          <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
+            <div className="bg-indigo-50 p-2.5 rounded-xl w-fit mb-3">
+              <ShoppingBag size={20} className="text-indigo-600" />
+            </div>
+            <p className="text-gray-500 text-xs font-medium">Total Bruto de Vendas</p>
+            <p className="text-2xl font-black text-gray-900 mt-0.5">{formatCurrency(stats.grossSales)}</p>
+            <p className="text-[10px] text-gray-400 mt-1">Faturado no período</p>
+          </div>
+          <Link href={`/finance?type=Income&status=Paid`} className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+            <div className="bg-green-50 p-2.5 rounded-xl w-fit mb-3">
+              <DollarSign size={20} className="text-green-600" />
+            </div>
+            <p className="text-gray-500 text-xs font-medium">Valor Recebido</p>
+            <p className="text-2xl font-black text-gray-900 mt-0.5">{formatCurrency(stats.receivedIncome)}</p>
+            <p className="text-[10px] text-gray-400 mt-1">Recebido no período</p>
+          </Link>
+          <Link href={`/finance?type=Income&status=Pending`} className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+            <div className="bg-amber-50 p-2.5 rounded-xl w-fit mb-3">
+              <DollarSign size={20} className="text-amber-600" />
+            </div>
+            <p className="text-gray-500 text-xs font-medium">A Receber</p>
+            <p className="text-2xl font-black text-gray-900 mt-0.5">{formatCurrency(stats.pendingIncome)}</p>
+            <p className="text-[10px] text-gray-400 mt-1">Total pendente</p>
+          </Link>
+        </div>
 
        {/* ALERTA DE DÍVIDAS / INADIMPLÊNCIA */}
        {(stats.overdueIncome > 0 || stats.overdueExpense > 0) && (
