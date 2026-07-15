@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Users, ClipboardList, DollarSign, ArrowUpRight, ShoppingBag, Wallet, FileText, Loader2, TrendingUp, AlertCircle, XCircle } from 'lucide-react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
@@ -8,26 +8,72 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { formatCurrency } from '@/lib/format';
 
 export default function Dashboard() {
-   const [stats, setStats] = useState({
-     customers: 0,
-     activeOS: 0,
-     grossSales: 0,
-     receivedIncome: 0,
-     pendingIncome: 0,
-     pendingExpense: 0,
-     monthIncome: 0,
-     overdueIncome: 0,
-     overdueExpense: 0,
-   });
+  const [period, setPeriod] = useState<'7d' | '15d' | '30d' | 'month' | 'all'>('month');
+    const [stats, setStats] = useState({
+      customers: 0,
+      activeOS: 0,
+      grossSales: 0,
+      receivedIncome: 0,
+      pendingIncome: 0,
+      pendingExpense: 0,
+      overdueIncome: 0,
+      overdueExpense: 0,
+    });
 
   const [recentOS, setRecentOS] = useState<any[]>([]);
   const [chartData, setChartData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const finArrRef = useRef<any[]>([]);
 
   useEffect(() => {
     fetchDashboardData();
   }, []);
+
+  useEffect(() => {
+    if (finArrRef.current.length > 0) computeStats(period);
+  }, [period]);
+
+  function getPeriodDates(p: string) {
+    const today = new Date();
+    const start = new Date(today);
+    if (p === '7d') start.setDate(start.getDate() - 7);
+    else if (p === '15d') start.setDate(start.getDate() - 15);
+    else if (p === '30d') start.setDate(start.getDate() - 30);
+    else if (p === 'month') start.setDate(1);
+    else return { start: null, end: null }; // 'all'
+    return { start: start.toISOString().split('T')[0], end: today.toISOString().split('T')[0] };
+  }
+
+  function computeStats(p: string) {
+    const arr = finArrRef.current;
+    const dates = getPeriodDates(p);
+    const todayStr = new Date().toISOString().split('T')[0];
+    const monthStartStr = todayStr.slice(0, 7);
+
+    const withinPeriod = (r: any) => {
+      if (!dates.start) return true;
+      const refDate = r.payment_date || r.due_date;
+      return refDate >= dates.start && refDate <= dates.end;
+    };
+
+    const grossSales = arr.filter((r: any) => r.type === 'Income' && withinPeriod(r)).reduce((acc: number, r: any) => acc + (r.amount || 0), 0);
+    const receivedIncome = arr.filter((r: any) => r.status === 'Paid' && r.type === 'Income' && withinPeriod(r)).reduce((acc: number, r: any) => acc + r.amount, 0);
+    const pendingIncome = arr.filter((r: any) => r.status === 'Pending' && r.type === 'Income').reduce((acc: number, r: any) => acc + r.amount, 0);
+    const pendingExpense = arr.filter((r: any) => r.status === 'Pending' && r.type === 'Expense').reduce((acc: number, r: any) => acc + r.amount, 0);
+
+    const overdueIncome = arr.filter((r: any) => r.status === 'Pending' && r.type === 'Income' && r.due_date < todayStr).reduce((acc: number, r: any) => acc + r.amount, 0);
+    const overdueExpense = arr.filter((r: any) => r.status === 'Pending' && r.type === 'Expense' && r.due_date < todayStr).reduce((acc: number, r: any) => acc + r.amount, 0);
+
+    const periodIncome = receivedIncome;
+
+    setStats(prev => ({ ...prev, grossSales, receivedIncome, pendingIncome, pendingExpense, overdueIncome, overdueExpense }));
+  }
+
+  function getPeriodLabel(p: string) {
+    const labels: any = { '7d': '7 dias', '15d': '15 dias', '30d': '30 dias', month: 'Este mês', all: 'Todo período' };
+    return labels[p];
+  }
 
   async function fetchDashboardData() {
     setLoading(true);
@@ -52,30 +98,13 @@ export default function Dashboard() {
       if (osRecentRes.error) console.error('Erro ao buscar O.S. recentes:', osRecentRes.error);
 
       const finArr = finRes.data || [];
-      const todayStr = new Date().toISOString().split('T')[0];
-      const monthStartStr = todayStr.slice(0, 7);
+      finArrRef.current = finArr;
 
-      const grossSales = finArr.filter((r: any) => r.type === 'Income').reduce((acc: number, r: any) => acc + (r.amount || 0), 0);
-      const receivedIncome = finArr.filter((r: any) => r.status === 'Paid' && r.type === 'Income').reduce((acc: number, r: any) => acc + r.amount, 0);
-      const pendingIncome = finArr.filter((r: any) => r.status === 'Pending' && r.type === 'Income').reduce((acc: number, r: any) => acc + r.amount, 0);
-      const pendingExpense = finArr.filter((r: any) => r.status === 'Pending' && r.type === 'Expense').reduce((acc: number, r: any) => acc + r.amount, 0);
-      
-      const overdueIncome = finArr.filter((r: any) => r.status === 'Pending' && r.type === 'Income' && r.due_date < todayStr).reduce((acc: number, r: any) => acc + r.amount, 0);
-      const overdueExpense = finArr.filter((r: any) => r.status === 'Pending' && r.type === 'Expense' && r.due_date < todayStr).reduce((acc: number, r: any) => acc + r.amount, 0);
-
-      const monthIncome = finArr.filter((r: any) => r.status === 'Paid' && r.type === 'Income' && r.payment_date?.startsWith(monthStartStr)).reduce((acc: number, r: any) => acc + r.amount, 0);
-
-      setStats({
+      computeStats(period);
+      setStats(prev => ({ ...prev,
         customers: custRes.count || 0,
         activeOS: osRes.count || 0,
-        grossSales,
-        receivedIncome,
-        pendingIncome,
-        pendingExpense,
-        monthIncome,
-        overdueIncome,
-        overdueExpense,
-      });
+      }));
       setRecentOS(osRecentRes.data || []);
 
       // Chart: últimos 6 meses
@@ -170,9 +199,27 @@ export default function Dashboard() {
           <div className="bg-purple-50 p-2.5 rounded-xl w-fit mb-3">
             <TrendingUp size={20} className="text-purple-600" />
           </div>
-          <p className="text-gray-500 text-xs font-medium">Vendas no Mês</p>
-          <p className="text-2xl font-black text-gray-900 mt-0.5">{formatCurrency(stats.monthIncome)}</p>
+          <p className="text-gray-500 text-xs font-medium">Vendas no Período</p>
+          <p className="text-2xl font-black text-gray-900 mt-0.5">{formatCurrency(stats.grossSales)}</p>
         </Link>
+       </div>
+
+       {/* FILTRO DE PERÍODO */}
+       <div className="flex flex-wrap items-center gap-2 mb-4">
+         <span className="text-xs font-medium text-gray-500 uppercase mr-1">Período:</span>
+         {(['7d', '15d', '30d', 'month', 'all'] as const).map(p => (
+           <button
+             key={p}
+             onClick={() => setPeriod(p)}
+             className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all ${
+               period === p
+                 ? 'bg-blue-600 text-white shadow-sm'
+                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+             }`}
+           >
+             {getPeriodLabel(p)}
+           </button>
+         ))}
        </div>
 
        {/* RESUMO DE VENDAS */}
@@ -181,21 +228,21 @@ export default function Dashboard() {
            <div className="bg-indigo-50 p-2.5 rounded-xl w-fit mb-3">
              <ShoppingBag size={20} className="text-indigo-600" />
            </div>
-           <p className="text-gray-500 text-xs font-medium">Total Bruto de Vendas</p>
+           <p className="text-gray-500 text-xs font-medium">Total Bruto <span className="text-[9px] text-gray-400">({getPeriodLabel(period)})</span></p>
            <p className="text-2xl font-black text-gray-900 mt-0.5">{formatCurrency(stats.grossSales)}</p>
          </div>
          <Link href={`/finance?type=Income&status=Paid`} className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
            <div className="bg-green-50 p-2.5 rounded-xl w-fit mb-3">
              <DollarSign size={20} className="text-green-600" />
            </div>
-           <p className="text-gray-500 text-xs font-medium">Valor Recebido</p>
+           <p className="text-gray-500 text-xs font-medium">Valor Recebido <span className="text-[9px] text-gray-400">({getPeriodLabel(period)})</span></p>
            <p className="text-2xl font-black text-gray-900 mt-0.5">{formatCurrency(stats.receivedIncome)}</p>
          </Link>
          <Link href={`/finance?type=Income&status=Pending`} className="bg-white p-5 rounded-2xl border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
            <div className="bg-amber-50 p-2.5 rounded-xl w-fit mb-3">
              <DollarSign size={20} className="text-amber-600" />
            </div>
-           <p className="text-gray-500 text-xs font-medium">A Receber</p>
+           <p className="text-gray-500 text-xs font-medium">A Receber <span className="text-[9px] text-gray-400">(total)</span></p>
            <p className="text-2xl font-black text-gray-900 mt-0.5">{formatCurrency(stats.pendingIncome)}</p>
          </Link>
        </div>

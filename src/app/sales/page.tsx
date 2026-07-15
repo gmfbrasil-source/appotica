@@ -182,7 +182,7 @@ export default function SalesPage() {
 
       // Set sale details
       setSaleDetails({
-        saleDate: getLocalDate(new Date(os.created_at)),
+        saleDate: os.sale_date || getLocalDate(new Date(os.created_at)),
         frame,
         lenses,
         total_value: String(os.total_value || ''),
@@ -412,6 +412,7 @@ export default function SalesPage() {
           status: 'In_Laboratory',
           total_value: totalVal,
           scheduled_date: saleDetails.scheduled_date,
+          sale_date: saleDetails.saleDate,
           notes: notesOS,
           frame_width: saleDetails.frame_width ? parseFloat(saleDetails.frame_width) : null,
           bridge_rim: saleDetails.bridge_rim ? parseFloat(saleDetails.bridge_rim) : null,

@@ -71,10 +71,6 @@ export default function CustomerDetailsPage() {
     return acc + (curr?.status === 'Pending' && curr?.type === 'Income' ? (Number(curr?.amount) || 0) : 0);
   }, 0);
 
-  const totalPaidExpenses = (financials || []).reduce((acc, curr) => {
-    return acc + (curr?.status === 'Paid' && curr?.type === 'Expense' ? (Number(curr?.amount) || 0) : 0);
-  }, 0);
-
   const overdueRecords = (financials || []).filter(f => {
     if (!f || !f.due_date) return false;
     try {
