@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 import { formatCurrency } from '@/lib/format';
+import UserMenu from '@/components/UserMenu';
 
 function getLocalDate(date?: Date): string {
   const d = date || new Date();
@@ -190,17 +191,21 @@ export default function Dashboard() {
                 Visão geral da sua ótica · <span className="text-white font-semibold">{getPeriodLabel(period)}</span>
               </p>
             </div>
-            <div className="flex flex-wrap items-center gap-1.5">
-              {(['7d', '15d', '30d', 'month', 'all'] as const).map(p => (
-                <button key={p} onClick={() => setPeriod(p)}
-                  className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all ${
-                    period === p
-                      ? 'bg-white text-gray-900 shadow-lg shadow-white/20'
-                      : 'bg-white/10 text-gray-300 hover:bg-white/20 hover:text-white'
-                  }`}>
-                  {getPeriodLabel(p)}
-                </button>
-              ))}
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-center gap-1.5">
+                {(['7d', '15d', '30d', 'month', 'all'] as const).map(p => (
+                  <button key={p} onClick={() => setPeriod(p)}
+                    className={`px-3 py-1.5 text-xs font-bold rounded-xl transition-all ${
+                      period === p
+                        ? 'bg-white text-gray-900 shadow-lg shadow-white/20'
+                        : 'bg-white/10 text-gray-300 hover:bg-white/20 hover:text-white'
+                    }`}>
+                    {getPeriodLabel(p)}
+                  </button>
+                ))}
+              </div>
+              <UserMenu />
+            </div>
             </div>
           </div>
         </div>

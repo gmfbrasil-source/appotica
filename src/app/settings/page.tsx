@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { ArrowLeft, CreditCard, Loader2, Plus, Check, X, Pencil, Trash2, Download, Upload, FileSpreadsheet } from 'lucide-react';
 import Link from 'next/link';
+import UserMenu from '@/components/UserMenu';
 
 const BACKUP_TABLES = [
   'customers', 'products', 'payment_methods', 'service_orders',
@@ -351,6 +352,7 @@ export default function SettingsPage() {
           >
             <Plus size={18} /> Novo Método
           </button>
+          <UserMenu />
         </div>
       </div>
 

@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase';
 import { formatCurrency } from '@/lib/format';
 import { Plus, Package, Truck, CheckCircle, Clock, Pencil } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import UserMenu from '@/components/UserMenu';
 
 function parseLocalDate(dateStr: string): Date {
   if (!dateStr) return new Date();
@@ -113,6 +114,7 @@ export default function OSPage() {
           >
             <Plus size={18} /> Nova O.S.
           </button>
+          <UserMenu />
         </div>
       </div>
 

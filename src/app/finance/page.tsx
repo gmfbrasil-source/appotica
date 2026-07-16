@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { formatCurrency } from '@/lib/format';
 import { Plus, ArrowUpCircle, ArrowDownCircle, Calendar, Trash2, Search, Check, AlertCircle, CheckCircle, Printer, X, FileText } from 'lucide-react';
+import UserMenu from '@/components/UserMenu';
 
 function getLocalDate(date?: Date): string {
   const d = date || new Date();
@@ -384,6 +385,7 @@ export default function FinancePage() {
           >
             <Plus size={18} /> Novo Lançamento
           </button>
+          <UserMenu />
         </div>
       </div>
 

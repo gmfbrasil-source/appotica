@@ -13,6 +13,7 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+  const [needsConfirmation, setNeedsConfirmation] = useState(false);
   const router = useRouter();
 
   async function handleSubmit(e: React.FormEvent) {
@@ -32,22 +33,34 @@ export default function LoginPage() {
 
         if (signUpError) throw signUpError;
 
-        if (!data.user) {
-          setError('Verifique seu e-mail para confirmar o cadastro antes de entrar.');
-          setLoading(false);
+        const finalShopName = shopName.trim() || `${fullName.split(' ')[0]} - Ótica`;
+
+        // Se tem sessão (confirmação de email DESATIVADA), cria loja direto
+        if (data.session) {
+          const { error: rpcError } = await supabase.rpc('create_user_with_shop', {
+            user_id: data.user!.id,
+            full_name: fullName,
+            shop_name: finalShopName,
+          });
+          if (rpcError) throw rpcError;
+          router.push('/');
+          router.refresh();
           return;
         }
 
-        const finalShopName = shopName.trim() || `${fullName.split(' ')[0]} - Ótica`;
+        // Se NÃO tem sessão (confirmação de email ATIVADA), tenta criar loja com o user id mesmo assim
+        if (data.user) {
+          const { error: rpcError } = await supabase.rpc('create_user_with_shop', {
+            user_id: data.user.id,
+            full_name: fullName,
+            shop_name: finalShopName,
+          });
+          if (rpcError) {
+            console.error('Erro ao criar loja:', rpcError);
+          }
+        }
 
-        const { error: rpcError } = await supabase.rpc('create_user_with_shop', {
-          user_id: data.user.id,
-          full_name: fullName,
-          shop_name: finalShopName,
-        });
-
-        if (rpcError) throw rpcError;
-
+        setNeedsConfirmation(!data.session);
         setSuccess(true);
       } else {
         const { error: signInError } = await supabase.auth.signInWithPassword({
@@ -76,7 +89,9 @@ export default function LoginPage() {
           </div>
           <h1 className="text-2xl font-extrabold text-gray-900 mb-2">Cadastro realizado!</h1>
           <p className="text-gray-500 text-sm mb-6">
-            Sua conta foi criada com sucesso. Faça login para começar a usar o sistema.
+            {needsConfirmation
+              ? 'Confirme seu e-mail e depois faça login.'
+              : 'Sua loja foi criada. Faça login para começar.'}
           </p>
           <button
             onClick={() => { setSuccess(false); setIsSignUp(false); setEmail(''); setPassword(''); setFullName(''); setShopName(''); }}

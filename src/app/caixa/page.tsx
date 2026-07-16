@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { formatCurrency } from '@/lib/format';
 import { Calendar, ArrowUpCircle, ArrowDownCircle, CheckCircle, DollarSign, FileText, Loader2, X, AlertCircle, Clock } from 'lucide-react';
+import UserMenu from '@/components/UserMenu';
 
 function getLocalDate(date?: Date): string {
   const d = date || new Date();
@@ -137,6 +138,7 @@ export default function CaixaPage() {
               onChange={(e) => setSelectedDate(e.target.value)}
             />
           </div>
+          <UserMenu />
         </div>
       </div>
 
