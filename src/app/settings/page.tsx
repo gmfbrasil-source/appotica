@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { ArrowLeft, CreditCard, Loader2, Plus, Check, X, Pencil, Trash2, Download, Upload, FileSpreadsheet, MessageSquare, Save, Eye, ChevronDown, ChevronUp } from 'lucide-react';
 import Link from 'next/link';
-import UserMenu from '@/components/UserMenu';
+import SidebarMenu from '@/components/SidebarMenu';
 import { companyInfo } from '@/lib/format';
 
 const BACKUP_TABLES = [
@@ -406,7 +406,7 @@ export default function SettingsPage() {
               Formas de pagamento, mensagens de aviso e backup de dados
             </p>
           </div>
-          <UserMenu />
+          <SidebarMenu />
         </div>
       </div>
 

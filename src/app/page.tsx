@@ -6,7 +6,7 @@ import { supabase } from '@/lib/supabase';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 import { formatCurrency } from '@/lib/format';
-import UserMenu from '@/components/UserMenu';
+import SidebarMenu from '@/components/SidebarMenu';
 
 function getLocalDate(date?: Date): string {
   const d = date || new Date();
@@ -204,7 +204,7 @@ export default function Dashboard() {
                   </button>
                 ))}
               </div>
-              <UserMenu />
+              <SidebarMenu />
             </div>
           </div>
         </div>

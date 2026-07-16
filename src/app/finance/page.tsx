@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { formatCurrency } from '@/lib/format';
 import { Plus, ArrowUpCircle, ArrowDownCircle, Calendar, Trash2, Search, Check, AlertCircle, CheckCircle, Printer, X, FileText } from 'lucide-react';
-import UserMenu from '@/components/UserMenu';
+import SidebarMenu from '@/components/SidebarMenu';
 
 function getLocalDate(date?: Date): string {
   const d = date || new Date();
@@ -377,7 +377,7 @@ export default function FinancePage() {
               <p className="text-gray-400 text-xs font-medium uppercase tracking-wider mb-1">Financeiro</p>
               <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">Contas a Pagar e Receber</h1>
             </div>
-            <UserMenu />
+            <SidebarMenu />
           </div>
           <button
             onClick={() => { resetForm(); setShowForm(true); }}

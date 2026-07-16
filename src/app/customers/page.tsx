@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase';
 import { formatCurrency, companyInfo } from '@/lib/format';
 import { Plus, Search, User, ChevronDown, MessageCircle, AlertCircle, Calendar, DollarSign, ShoppingBag, X, Phone, Mail, FileText, CreditCard, CheckCircle, Clock, ArrowRight, MapPin, Pencil } from 'lucide-react';
 import Link from 'next/link';
-import UserMenu from '@/components/UserMenu';
+import SidebarMenu from '@/components/SidebarMenu';
 
 function parseLocalDate(dateStr: string): Date {
   if (!dateStr) return new Date();
@@ -194,7 +194,7 @@ export default function CustomersPage() {
           >
             <Plus size={18} /> Novo Cliente
           </button>
-          <UserMenu />
+          <SidebarMenu />
         </div>
       </div>
 

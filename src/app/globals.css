@@ -20,3 +20,11 @@ body {
 .animate-slide-up {
   animation: slide-up 0.25s ease-out;
 }
+
+@keyframes sidebar-in {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(0); }
+}
+.animate-sidebar-in {
+  animation: sidebar-in 0.2s ease-out;
+}

@@ -5,7 +5,7 @@ import { formatCurrency, companyInfo } from '@/lib/format';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Phone, MessageCircle, Calendar, DollarSign, AlertCircle, ShoppingBag } from 'lucide-react';
 import Link from 'next/link';
-import UserMenu from '@/components/UserMenu';
+import SidebarMenu from '@/components/SidebarMenu';
 
 function parseLocalDate(dateStr: string): Date {
   if (!dateStr) return new Date();
@@ -172,7 +172,7 @@ export default function CustomerDetailsPage() {
                 <AlertCircle size={16} /> Cobrar
               </button>
             )}
-            <UserMenu />
+            <SidebarMenu />
           </div>
         </div>
       </div>
