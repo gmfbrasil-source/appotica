@@ -369,6 +369,11 @@ export default function FinancePage() {
     <div className="min-h-screen bg-gray-50/50">
       <div className="max-w-7xl mx-auto p-4 md:p-6 lg:p-8 pb-24">
 
+      {/* USER MENU - TOPO */}
+      <div className="flex justify-end mb-3">
+        <UserMenu light />
+      </div>
+
       {/* HEADER ESCURO */}
       <div className="bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 rounded-3xl p-5 md:p-6 mb-6 text-white">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -385,7 +390,6 @@ export default function FinancePage() {
           >
             <Plus size={18} /> Novo Lançamento
           </button>
-          <UserMenu />
         </div>
       </div>
 

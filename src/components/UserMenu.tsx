@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
 import { LogOut, User, ChevronDown, Settings } from 'lucide-react';
 
-export default function UserMenu() {
+export default function UserMenu({ light = false }: { light?: boolean }) {
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
   const [open, setOpen] = useState(false);
@@ -42,15 +42,15 @@ export default function UserMenu() {
     <div className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-2 bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-xl transition-colors"
+        className={`flex items-center gap-2 px-3 py-1.5 rounded-xl transition-colors ${light ? 'bg-gray-100 hover:bg-gray-200 text-gray-700' : 'bg-white/10 hover:bg-white/20'}`}
       >
-        <div className="w-7 h-7 bg-white/20 rounded-lg flex items-center justify-center text-[11px] font-bold text-white">
+        <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-[11px] font-bold ${light ? 'bg-gray-900 text-white' : 'bg-white/20 text-white'}`}>
           {initials}
         </div>
-        <span className="text-sm font-medium text-white hidden sm:block max-w-[120px] truncate">
+        <span className={`text-sm font-medium hidden sm:block max-w-[120px] truncate ${light ? 'text-gray-700' : 'text-white'}`}>
           {profile?.full_name || user.email}
         </span>
-        <ChevronDown size={14} className={`text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} />
+        <ChevronDown size={14} className={`${light ? 'text-gray-500' : 'text-gray-400'} transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
 
       {open && (
