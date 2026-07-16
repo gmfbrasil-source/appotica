@@ -703,63 +703,6 @@ export default function SettingsPage() {
         )}
       </div>
 
-      {/* ─── BACKUP DE DADOS ──────────────────────────────── */}
-      <div className="mt-8 bg-white p-5 md:p-6 rounded-3xl border border-gray-100 shadow-sm">
-        <div className="flex items-center gap-3 mb-2">
-          <div className="p-2 bg-blue-50 rounded-xl"><FileSpreadsheet size={18} className="text-blue-600" /></div>
-          <h2 className="text-lg font-extrabold text-gray-900">Backup de Dados</h2>
-        </div>
-        <p className="text-sm text-gray-500 mb-6">
-          Exporte ou importe os dados da sua loja em formato .xls (Excel) ou .csv.
-        </p>
-
-        <div className="flex flex-wrap gap-4">
-          <button
-            onClick={handleExport}
-            disabled={exporting}
-            className="flex items-center gap-2 px-5 py-3 bg-gray-900 text-white font-bold rounded-xl hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
-          >
-            {exporting ? <Loader2 size={18} className="animate-spin" /> : <Download size={18} />}
-            {exporting ? 'Exportando...' : 'Exportar Dados'}
-          </button>
-
-          <label className={`flex items-center gap-2 px-5 py-3 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 transition-colors cursor-pointer shadow-sm ${importing ? 'opacity-50 cursor-not-allowed' : ''}`}>
-            {importing ? <Loader2 size={18} className="animate-spin" /> : <Upload size={18} />}
-            {importing ? 'Importando...' : 'Importar Planilha'}
-            <input type="file" accept=".csv,.xls" onChange={handleImport} disabled={importing} className="hidden" />
-          </label>
-        </div>
-
-        {importResult && (
-          <div className={`mt-4 p-4 rounded-xl text-sm whitespace-pre-line ${
-            importResult.includes('Erro') || importResult.includes('erro')
-              ? 'bg-red-50 text-red-700 border border-red-100'
-              : 'bg-green-50 text-green-700 border border-green-100'
-          }`}>
-            {importResult}
-          </div>
-        )}
-
-        <details className="mt-6">
-          <summary className="text-sm text-gray-500 cursor-pointer hover:text-gray-700 font-medium">
-            Como usar o backup
-          </summary>
-          <div className="mt-3 text-sm text-gray-600 space-y-2 bg-gray-50 rounded-xl p-4">
-            <p><strong>Exportar:</strong> Gera um arquivo .xls com todos os dados organizados em tabelas. Abra no Excel ou Google Sheets.</p>
-            <p><strong>Importar (edição em massa):</strong></p>
-            <ol className="list-decimal list-inside space-y-1 ml-2">
-              <li>Exporte os dados primeiro (.xls)</li>
-              <li>Abra no Excel, faça as alterações desejadas</li>
-              <li>No Excel: <strong>Arquivo &gt; Salvar como &gt; CSV (UTF-8) (.csv)</strong></li>
-              <li>Importe o .csv de volta — o sistema atualizará os registros existentes e criará novos</li>
-            </ol>
-            <p className="text-xs text-amber-600 mt-2">Importante: mantenha a primeira linha (cabeçalho das colunas) inalterada.</p>
-          </div>
-        </details>
-          )}
-        </div>
-      </div>
-
       {/* ─── BACKUP DE DADOS (ACCORDION) ───────────────────── */}
       <div className="mt-8 bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden">
         <button
