@@ -88,8 +88,8 @@ export default function LoginPage() {
 
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50/50 p-4">
-        <div className="bg-white p-8 rounded-3xl shadow-xl w-full max-w-md border border-gray-100 text-center">
+      <div className="min-h-screen flex items-start sm:items-center justify-center bg-gray-50/50 p-4 overflow-y-auto">
+        <div className="bg-white p-8 rounded-3xl shadow-xl w-full max-w-md border border-gray-100 text-center my-4">
           <div className="bg-green-100 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4">
             <Sparkles className="text-green-600" size={32} />
           </div>
@@ -111,8 +111,8 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50/50 p-4 pt-8 pb-24">
-      <div className="bg-white p-6 sm:p-8 rounded-3xl shadow-xl w-full max-w-md border border-gray-100">
+    <div className="min-h-screen flex items-start sm:items-center justify-center bg-gray-50/50 p-3 sm:p-4 pt-12 sm:pt-8 pb-28 overflow-y-auto">
+      <div className="bg-white p-5 sm:p-8 rounded-3xl shadow-xl w-full max-w-md border border-gray-100 my-4 sm:my-0">
         <div className="text-center mb-8">
           <div className="bg-gray-900 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg">
             <Sparkles className="text-white" size={32} />
