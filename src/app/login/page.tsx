@@ -74,7 +74,11 @@ export default function LoginPage() {
         router.refresh();
       }
     } catch (err: any) {
-      setError(err.message || 'Ocorreu um erro inesperado.');
+      let msg = err.message || 'Ocorreu um erro inesperado.';
+      if (msg.includes('rate limit') || msg.includes('email')) {
+        msg = 'Muitas tentativas aguarde alguns minutos e tente novamente, ou desative a confirmação de e-mail no Supabase (Dashboard > Auth > Settings).';
+      }
+      setError(msg);
     } finally {
       setLoading(false);
     }

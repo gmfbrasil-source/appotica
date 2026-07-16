@@ -1,19 +1,4 @@
--- ==========================================
--- MIGRATION: Fluxo de Cadastro (Signup)
--- Execute no Supabase Dashboard > SQL Editor
--- ==========================================
-
--- 1. RLS: Permitir INSERT em shops para usuários autenticados
-CREATE POLICY "Authenticated users can create shop" ON shops
-    FOR INSERT TO authenticated
-    WITH CHECK (true);
-
--- 2. RLS: Permitir INSERT em profiles para o próprio usuário
-CREATE POLICY "Users can insert their own profile" ON profiles
-    FOR INSERT TO authenticated
-    WITH CHECK (id = auth.uid());
-
--- 3. Função atômica: cria shop + profile + formas de pagamento padrão
+-- Correção:_profiles já existe por trigger do Supabase, usar UPSERT
 CREATE OR REPLACE FUNCTION public.create_user_with_shop(
     user_id UUID,
     full_name TEXT,
@@ -24,15 +9,16 @@ DECLARE
     new_shop shops%ROWTYPE;
     new_profile profiles%ROWTYPE;
 BEGIN
-    -- Cria a loja
     INSERT INTO shops (name) VALUES (shop_name) RETURNING * INTO new_shop;
 
-    -- Cria o perfil do usuário
     INSERT INTO profiles (id, shop_id, full_name, role)
     VALUES (user_id, new_shop.id, full_name, 'admin')
+    ON CONFLICT (id) DO UPDATE SET
+        shop_id = EXCLUDED.shop_id,
+        full_name = EXCLUDED.full_name,
+        role = EXCLUDED.role
     RETURNING * INTO new_profile;
 
-    -- Cadastra formas de pagamento padrão
     INSERT INTO payment_methods (shop_id, name, fee_percent, max_installments, is_card, active, fee_by_installment)
     VALUES
         (new_shop.id, 'Pix', 0, 1, false, true, NULL),
