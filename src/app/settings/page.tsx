@@ -406,12 +406,6 @@ export default function SettingsPage() {
               Formas de pagamento, mensagens de aviso e backup de dados
             </p>
           </div>
-          <button
-            onClick={() => { setEditingId(null); setFormData({ name: '', fee_percent: '', max_installments: '1', is_card: false, active: true, fee_by_installment: {} }); setShowForm(true); }}
-            className="bg-white text-gray-900 px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-gray-100 transition-colors flex items-center gap-2 shadow-lg shadow-white/10"
-          >
-            <Plus size={18} /> Novo Método
-          </button>
           <UserMenu />
         </div>
       </div>
@@ -503,6 +497,14 @@ export default function SettingsPage() {
         </button>
         {openPayments && (
           <div className="px-5 md:px-6 pb-5 md:pb-6">
+            <div className="flex justify-end mb-4">
+              <button
+                onClick={() => { setEditingId(null); setFormData({ name: '', fee_percent: '', max_installments: '1', is_card: false, active: true, fee_by_installment: {} }); setShowForm(true); }}
+                className="bg-gray-900 text-white px-4 py-2 rounded-xl font-bold text-sm hover:bg-gray-800 transition-colors flex items-center gap-2"
+              >
+                <Plus size={16} /> Novo Metodo
+              </button>
+            </div>
             {loading ? (
               <div className="text-center py-10 text-gray-500"><Loader2 className="animate-spin mx-auto mb-2" size={24} /> Carregando...</div>
             ) : (
