@@ -369,20 +369,15 @@ export default function FinancePage() {
     <div className="min-h-screen bg-gray-50/50">
       <div className="max-w-7xl mx-auto p-4 md:p-6 lg:p-8 pb-24">
 
-      {/* USER MENU - TOPO */}
-      <div className="flex justify-end mb-3">
-        <UserMenu light />
-      </div>
-
       {/* HEADER ESCURO */}
       <div className="bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 rounded-3xl p-5 md:p-6 mb-6 text-white">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div>
-            <p className="text-gray-400 text-xs font-medium uppercase tracking-wider mb-1">Financeiro</p>
-            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">Contas a Pagar e Receber</h1>
-            <p className="text-gray-400 text-sm mt-1">
-              Gerencie suas movimentações financeiras
-            </p>
+          <div className="flex items-center gap-3">
+            <div>
+              <p className="text-gray-400 text-xs font-medium uppercase tracking-wider mb-1">Financeiro</p>
+              <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">Contas a Pagar e Receber</h1>
+            </div>
+            <UserMenu />
           </div>
           <button
             onClick={() => { resetForm(); setShowForm(true); }}
