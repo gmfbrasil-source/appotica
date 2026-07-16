@@ -206,7 +206,6 @@ export default function Dashboard() {
               </div>
               <UserMenu />
             </div>
-            </div>
           </div>
         </div>
 
