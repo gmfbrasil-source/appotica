@@ -396,6 +396,8 @@ export default function SettingsPage() {
     <div className="min-h-screen bg-gray-50/50">
       <div className="max-w-3xl mx-auto p-4 md:p-6 lg:p-8 pb-24">
 
+      <SidebarMenu />
+
       {/* HEADER ESCURO */}
       <div className="bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 rounded-3xl p-5 md:p-6 mb-6 text-white">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -406,7 +408,6 @@ export default function SettingsPage() {
               Formas de pagamento, mensagens de aviso e backup de dados
             </p>
           </div>
-          <SidebarMenu />
         </div>
       </div>
 

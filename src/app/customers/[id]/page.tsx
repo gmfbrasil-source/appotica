@@ -139,6 +139,8 @@ export default function CustomerDetailsPage() {
         </Link>
       </div>
 
+      <SidebarMenu />
+
       {/* HEADER DO CLIENTE */}
       <div className="bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 rounded-3xl p-5 md:p-6 mb-6 text-white">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -172,7 +174,6 @@ export default function CustomerDetailsPage() {
                 <AlertCircle size={16} /> Cobrar
               </button>
             )}
-            <SidebarMenu />
           </div>
         </div>
       </div>

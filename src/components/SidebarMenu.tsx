@@ -51,7 +51,7 @@ export default function SidebarMenu() {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="flex items-center gap-2 bg-white/10 hover:bg-white/20 p-2 rounded-xl transition-colors"
+        className="fixed top-4 left-4 z-50 bg-gray-900 hover:bg-gray-800 p-2.5 rounded-xl transition-colors shadow-lg"
       >
         <Menu size={20} className="text-white" />
       </button>
