@@ -56,7 +56,7 @@ export default function UserMenu() {
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 top-full mt-2 bg-white rounded-2xl border border-gray-100 shadow-xl z-50 min-w-[200px] overflow-hidden">
+          <div className="absolute right-0 sm:right-0 left-auto sm:left-auto left-0 top-full mt-2 bg-white rounded-2xl border border-gray-100 shadow-xl z-50 min-w-[220px] max-w-[280px] overflow-hidden">
             <div className="p-3 border-b border-gray-100">
               <p className="text-xs font-bold text-gray-800 truncate">{profile?.full_name || 'Usuário'}</p>
               <p className="text-[10px] text-gray-400 truncate">{user.email}</p>

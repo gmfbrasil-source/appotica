@@ -399,7 +399,7 @@ export default function OSDetailPage() {
                       )}
                       {osData.altura != null && (
                         <div className="bg-white p-2.5 rounded-xl border border-gray-100">
-                          <p className="text-[10px] text-gray-400 uppercase">Altura</p>
+                          <p className="text-[10px] text-gray-400 uppercase">C.O.</p>
                           <p className="font-bold text-gray-800">{osData.altura} mm</p>
                         </div>
                       )}
@@ -520,7 +520,7 @@ export default function OSDetailPage() {
                   <div className="border-r border-black p-0.5 text-[9px]">{osData.bridge_rim != null ? osData.bridge_rim + 'mm' : '---'}</div>
                   <div className="p-0.5 text-[9px]">{osData.major_angle != null ? osData.major_angle + '' : '---'}</div>
                   <div className="border-r border-t border-black p-0.5 font-bold text-[9px]">D.P.</div>
-                  <div className="border-t border-black p-0.5 font-bold text-[9px]">Altura</div>
+                  <div className="border-t border-black p-0.5 font-bold text-[9px]">C.O.</div>
                   <div></div>
                   <div className="border-r border-black p-0.5 text-[9px]">{osData.dp_os != null ? osData.dp_os + 'mm' : '---'}</div>
                   <div className="p-0.5 text-[9px]">{osData.altura != null ? osData.altura + 'mm' : '---'}</div>

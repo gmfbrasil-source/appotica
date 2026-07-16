@@ -177,7 +177,7 @@ export default function OSPage() {
                   <input type="number" step="0.5" min="0" placeholder="62" className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" value={formData.dp_os} onChange={(e) => setFormData({...formData, dp_os: e.target.value})} />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Altura (mm)</label>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Centro Optico (mm)</label>
                   <input type="number" step="0.5" min="0" placeholder="22" className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" value={formData.altura} onChange={(e) => setFormData({...formData, altura: e.target.value})} />
                 </div>
               </div>

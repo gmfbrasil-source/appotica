@@ -357,8 +357,8 @@ export default function SalesPage() {
         });
         const axisOD = parseInt(prescription.od_axis);
         const axisOE = parseInt(prescription.oe_axis);
-        if (isNaN(axisOD) || axisOD < 0 || axisOD > 180) warnings.push('O Eixo OD deve estar entre 0 e 180.');
-        if (isNaN(axisOE) || axisOE < 0 || axisOE > 180) warnings.push('O Eixo OE deve estar entre 0 e 180.');
+        if (prescription.od_cylinder && (isNaN(axisOD) || axisOD < 0 || axisOD > 180)) warnings.push('O Eixo OD deve estar entre 0 e 180.');
+        if (prescription.oe_cylinder && (isNaN(axisOE) || axisOE < 0 || axisOE > 180)) warnings.push('O Eixo OE deve estar entre 0 e 180.');
         const dp = parseFloat(prescription.dp);
         if (!isNaN(dp) && (dp < 40 || dp > 80)) warnings.push('A Distância Pupilar (DP) parece incomum (fora de 40-80mm).');
         if (warnings.length > 0) {
@@ -916,7 +916,7 @@ export default function SalesPage() {
               <input type="number" step="0.5" min="0" placeholder="Ex: 62" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={saleDetails.dp_os} onChange={(e) => setSaleDetails({...saleDetails, dp_os: e.target.value})} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Altura (mm)</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Centro Optico (mm)</label>
               <input type="number" step="0.5" min="0" placeholder="Ex: 22" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={saleDetails.altura} onChange={(e) => setSaleDetails({...saleDetails, altura: e.target.value})} />
             </div>
           </div>
