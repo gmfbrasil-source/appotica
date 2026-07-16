@@ -1,6 +1,6 @@
 'use client';
 import Link from 'next/link';
-import { Home, Users, DollarSign, ShoppingBag, Wallet, Settings } from 'lucide-react';
+import { Home, Users, DollarSign, ShoppingBag, Wallet } from 'lucide-react';
 import { usePathname } from 'next/navigation';
 
 export default function Navbar() {
@@ -31,10 +31,6 @@ export default function Navbar() {
       <Link href="/finance" className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all ${pathname === '/finance' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-900'}`}>
         <DollarSign size={20} />
         <span className="text-[9px] font-bold">Financeiro</span>
-      </Link>
-      <Link href="/settings" className={`flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-xl transition-all ${pathname === '/settings' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-900'}`}>
-        <Settings size={20} />
-        <span className="text-[9px] font-bold">Config</span>
       </Link>
     </nav>
   );

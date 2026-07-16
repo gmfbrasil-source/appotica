@@ -97,6 +97,12 @@ export default function SidebarMenu() {
               >
                 <Settings size={18} className="text-gray-400" /> Meu Perfil
               </button>
+              <button
+                onClick={() => { setOpen(false); router.push('/settings'); }}
+                className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-xl transition-colors"
+              >
+                <Settings size={18} className="text-gray-400" /> Configuracoes
+              </button>
             </div>
 
             <div className="p-3 border-t border-gray-100">
