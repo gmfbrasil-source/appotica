@@ -1,13 +1,14 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import { ArrowLeft, CreditCard, Loader2, Plus, Check, X, Pencil, Trash2, Download, Upload, FileSpreadsheet } from 'lucide-react';
+import { ArrowLeft, CreditCard, Loader2, Plus, Check, X, Pencil, Trash2, Download, Upload, FileSpreadsheet, MessageSquare, Save, Eye } from 'lucide-react';
 import Link from 'next/link';
 import UserMenu from '@/components/UserMenu';
+import { companyInfo } from '@/lib/format';
 
 const BACKUP_TABLES = [
   'customers', 'products', 'payment_methods', 'service_orders',
-  'prescriptions', 'financial_records', 'cash_closing'
+  'prescriptions', 'financial_records', 'cash_closing', 'message_templates'
 ] as const;
 
 function escHtml(s: string): string {
@@ -50,8 +51,19 @@ export default function SettingsPage() {
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState<string | null>(null);
 
+  // Message template states
+  const [templates, setTemplates] = useState<any[]>([]);
+  const [templatesLoading, setTemplatesLoading] = useState(true);
+  const [editingTemplate, setEditingTemplate] = useState<any>(null);
+  const [templateForm, setTemplateForm] = useState({ title: '', message: '' });
+  const [savingTemplate, setSavingTemplate] = useState(false);
+  const [templateSuccess, setTemplateSuccess] = useState('');
+  const [templateError, setTemplateError] = useState('');
+  const [previewTemplate, setPreviewTemplate] = useState<string | null>(null);
+
   useEffect(() => {
     fetchMethods();
+    fetchTemplates();
   }, []);
 
   async function fetchMethods() {
@@ -61,6 +73,47 @@ export default function SettingsPage() {
     const { data } = await supabase.from('payment_methods').select('*').eq('shop_id', profile.shop_id).order('name');
     if (data) setMethods(data);
     setLoading(false);
+  }
+
+  async function fetchTemplates() {
+    setTemplatesLoading(true);
+    const { data } = await supabase.from('message_templates').select('*').order('stage');
+    if (data) setTemplates(data);
+    setTemplatesLoading(false);
+  }
+
+  async function handleSaveTemplate() {
+    if (!editingTemplate) return;
+    setSavingTemplate(true);
+    setTemplateError('');
+    setTemplateSuccess('');
+
+    try {
+      const { error } = await supabase
+        .from('message_templates')
+        .update({ title: templateForm.title, message: templateForm.message, updated_at: new Date().toISOString() })
+        .eq('id', editingTemplate.id);
+
+      if (error) throw error;
+      setTemplateSuccess('Mensagem salva com sucesso!');
+      setEditingTemplate(null);
+      fetchTemplates();
+      setTimeout(() => setTemplateSuccess(''), 3000);
+    } catch (err: any) {
+      setTemplateError(err.message || 'Erro ao salvar mensagem.');
+    } finally {
+      setSavingTemplate(false);
+    }
+  }
+
+  function renderPreview(msg: string) {
+    return msg
+      .replace(/\{cliente\}/g, 'Maria Silva')
+      .replace(/\{numero\}/g, '001/2026')
+      .replace(/\{produto\}/g, 'Armadura + Lentes')
+      .replace(/\{valor\}/g, 'R$ 1.250,00')
+      .replace(/\{prazo\}/g, '10 dias úteis')
+      .replace(/\{loja\}/g, companyInfo.nomeFantasia);
   }
 
   async function handleSave(e: React.FormEvent) {
@@ -162,7 +215,8 @@ export default function SettingsPage() {
         const labelMap: Record<string, string> = {
           customers: 'Clientes', products: 'Produtos', payment_methods: 'Formas de Pagamento',
           service_orders: 'Ordens de Servico', prescriptions: 'Prescricoes',
-          financial_records: 'Financeiro', cash_closing: 'Fechamentos de Caixa'
+          financial_records: 'Financeiro', cash_closing: 'Fechamentos de Caixa',
+          message_templates: 'Mensagens de Aviso'
         };
 
         html += `<h2>${labelMap[table] || table}</h2>\n`;
@@ -232,7 +286,8 @@ export default function SettingsPage() {
           const tableMap: Record<string, string> = {
             clientes: 'customers', produtos: 'products', 'formas de pagamento': 'payment_methods',
             'ordens de servico': 'service_orders', prescricoes: 'prescriptions',
-            financeiro: 'financial_records', 'fechamentos de caixa': 'cash_closing'
+            financeiro: 'financial_records', 'fechamentos de caixa': 'cash_closing',
+            'mensagens de aviso': 'message_templates'
           };
           const dbTable = tableMap[tableName] || tableName;
 
@@ -288,7 +343,7 @@ export default function SettingsPage() {
       const order: string[] = [
         'customers', 'products', 'payment_methods',
         'service_orders', 'prescriptions',
-        'financial_records', 'cash_closing'
+        'financial_records', 'cash_closing', 'message_templates'
       ];
 
       let totalImported = 0;
@@ -343,7 +398,7 @@ export default function SettingsPage() {
             <p className="text-gray-400 text-xs font-medium uppercase tracking-wider mb-1">Sistema</p>
             <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">Configurações</h1>
             <p className="text-gray-400 text-sm mt-1">
-              Formas de pagamento e backup de dados
+              Formas de pagamento, mensagens de aviso e backup de dados
             </p>
           </div>
           <button
@@ -459,6 +514,165 @@ export default function SettingsPage() {
           {methods.length === 0 && <p className="text-center text-gray-500 py-10">Nenhum método de pagamento cadastrado.</p>}
         </div>
       )}
+
+      {/* ─── MENSAGENS DE AVISO ──────────────────────────────── */}
+      <div className="mt-8 bg-white p-5 md:p-6 rounded-3xl border border-gray-100 shadow-sm">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="p-2 bg-amber-50 rounded-xl"><MessageSquare size={18} className="text-amber-600" /></div>
+          <div>
+            <h2 className="text-lg font-extrabold text-gray-900">Mensagens de Aviso</h2>
+            <p className="text-xs text-gray-400">Configure as mensagens enviadas ao cliente em cada estágio da O.S.</p>
+          </div>
+        </div>
+
+        <p className="text-xs text-gray-500 mb-4">
+          Variáveis: {'{cliente}'} {'{numero}'} {'{produto}'} {'{valor}'} {'{prazo}'} {'{loja}'}
+        </p>
+
+        {templateSuccess && (
+          <div className="bg-green-50 border border-green-200 rounded-xl p-3 mb-4 text-sm text-green-700 font-medium flex items-center gap-2">
+            <Check size={16} className="shrink-0" /> {templateSuccess}
+          </div>
+        )}
+        {templateError && (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-3 mb-4 text-sm text-red-700 font-medium flex items-center gap-2">
+            <X size={16} className="shrink-0" /> {templateError}
+          </div>
+        )}
+
+        {templatesLoading ? (
+          <div className="text-center py-8 text-gray-500"><Loader2 className="animate-spin mx-auto mb-2" size={20} /> Carregando...</div>
+        ) : templates.length === 0 ? (
+          <div className="text-center py-8">
+            <p className="text-gray-500 mb-3">Nenhum template encontrado.</p>
+            <button
+              onClick={async () => {
+                await supabase.rpc('create_default_message_templates');
+                fetchTemplates();
+              }}
+              className="px-4 py-2 bg-amber-500 text-white text-sm font-bold rounded-xl hover:bg-amber-600 transition-colors"
+            >
+              Criar Mensagens Padrão
+            </button>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {templates.map((t) => {
+              const stageColors: Record<string, string> = {
+                created: 'bg-blue-100 text-blue-600',
+                preparing: 'bg-amber-100 text-amber-600',
+                ready: 'bg-green-100 text-green-600',
+                delivered: 'bg-purple-100 text-purple-600',
+                overdue: 'bg-red-100 text-red-600',
+              };
+              const stageLabels: Record<string, string> = {
+                created: 'Criada', preparing: 'Em Preparo', ready: 'Pronta',
+                delivered: 'Entregue', overdue: 'Atraso',
+              };
+
+              return (
+                <div key={t.id} className="bg-gray-50 rounded-2xl p-4 border border-gray-100">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full ${stageColors[t.stage] || 'bg-gray-100 text-gray-600'}`}>
+                        {stageLabels[t.stage] || t.stage}
+                      </span>
+                      <span className="font-bold text-gray-800 text-sm">{t.title}</span>
+                    </div>
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => setPreviewTemplate(previewTemplate === t.id ? null : t.id)}
+                        className="text-gray-400 hover:text-green-600 p-1.5 rounded-lg hover:bg-green-50 transition-colors"
+                        title="Preview"
+                      >
+                        <Eye size={15} />
+                      </button>
+                      <button
+                        onClick={() => { setEditingTemplate(t); setTemplateForm({ title: t.title, message: t.message }); }}
+                        className="text-gray-400 hover:text-blue-600 p-1.5 rounded-lg hover:bg-blue-50 transition-colors"
+                        title="Editar"
+                      >
+                        <Pencil size={15} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {previewTemplate === t.id && (
+                    <div className="bg-white rounded-xl p-3 border border-gray-200 mb-2 text-sm text-gray-700 leading-relaxed">
+                      {renderPreview(t.message)}
+                    </div>
+                  )}
+
+                  <p className="text-xs text-gray-500 leading-relaxed line-clamp-2">{t.message}</p>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Edit modal */}
+        {editingTemplate && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-2xl p-6 w-full max-w-lg">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-bold text-gray-900">Editar Mensagem</h3>
+                <button onClick={() => setEditingTemplate(null)} className="text-gray-500 hover:text-gray-700">
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Título</label>
+                  <input
+                    type="text"
+                    value={templateForm.title}
+                    onChange={(e) => setTemplateForm({ ...templateForm, title: e.target.value })}
+                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none text-gray-950"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Mensagem</label>
+                  <textarea
+                    value={templateForm.message}
+                    onChange={(e) => setTemplateForm({ ...templateForm, message: e.target.value })}
+                    rows={5}
+                    className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none text-gray-950 text-sm leading-relaxed resize-none"
+                  />
+                  <p className="text-[10px] text-gray-400 mt-1">
+                    Variáveis: {'{cliente}'} {'{numero}'} {'{produto}'} {'{valor}'} {'{prazo}'} {'{loja}'}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Preview</label>
+                  <div className="bg-green-50 border border-green-200 rounded-xl p-3 text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">
+                    {renderPreview(templateForm.message)}
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setEditingTemplate(null)}
+                    className="flex-1 py-2.5 bg-gray-100 text-gray-700 font-bold rounded-xl hover:bg-gray-200 transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleSaveTemplate}
+                    disabled={savingTemplate}
+                    className="flex-1 py-2.5 bg-amber-500 text-white font-bold rounded-xl hover:bg-amber-600 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                  >
+                    {savingTemplate ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />}
+                    Salvar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
 
       {/* ─── BACKUP DE DADOS ──────────────────────────────── */}
       <div className="mt-8 bg-white p-5 md:p-6 rounded-3xl border border-gray-100 shadow-sm">

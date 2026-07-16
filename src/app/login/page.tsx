@@ -43,6 +43,7 @@ export default function LoginPage() {
             shop_name: finalShopName,
           });
           if (rpcError) throw rpcError;
+          await supabase.rpc('create_default_message_templates');
           router.push('/');
           router.refresh();
           return;
@@ -58,6 +59,7 @@ export default function LoginPage() {
           if (rpcError) {
             console.error('Erro ao criar loja:', rpcError);
           }
+          await supabase.rpc('create_default_message_templates');
         }
 
         setNeedsConfirmation(!data.session);
