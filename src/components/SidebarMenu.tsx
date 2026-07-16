@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
-import { LogOut, Settings, User, Menu, X } from 'lucide-react';
+import { LogOut, Settings, User, Menu, X, UserCircle } from 'lucide-react';
 
 export default function SidebarMenu() {
   const [user, setUser] = useState<any>(null);
@@ -95,7 +95,7 @@ export default function SidebarMenu() {
                 onClick={() => { setOpen(false); router.push('/profile'); }}
                 className="w-full flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 rounded-xl transition-colors"
               >
-                <Settings size={18} className="text-gray-400" /> Meu Perfil
+                <UserCircle size={18} className="text-gray-400" /> Meu Perfil
               </button>
               <button
                 onClick={() => { setOpen(false); router.push('/settings'); }}

@@ -142,7 +142,7 @@ export default function ProfilePage() {
       <div className="max-w-2xl mx-auto p-4 md:p-6 lg:p-8 pb-24">
 
         {/* HEADER */}
-        <div className="bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 rounded-3xl p-5 md:p-6 mb-6 text-white">
+        <div className="bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 rounded-3xl ml-14 md:ml-0 p-5 md:p-6 mb-6 text-white">
           <div className="flex items-center gap-3">
             <Link href="/" className="bg-white/10 hover:bg-white/20 p-2 rounded-xl transition-colors">
               <ArrowLeft size={20} />

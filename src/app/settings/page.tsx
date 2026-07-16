@@ -52,9 +52,9 @@ export default function SettingsPage() {
   const [importResult, setImportResult] = useState<string | null>(null);
 
   // Accordion states
-  const [openPayments, setOpenPayments] = useState(true);
-  const [openMessages, setOpenMessages] = useState(true);
-  const [openBackup, setOpenBackup] = useState(true);
+  const [openPayments, setOpenPayments] = useState(false);
+  const [openMessages, setOpenMessages] = useState(false);
+  const [openBackup, setOpenBackup] = useState(false);
 
   // Message template states
   const [templates, setTemplates] = useState<any[]>([]);
@@ -399,7 +399,7 @@ export default function SettingsPage() {
       <SidebarMenu />
 
       {/* HEADER ESCURO */}
-      <div className="bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 rounded-3xl p-5 md:p-6 mb-6 text-white">
+      <div className="bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 rounded-3xl ml-14 md:ml-0 p-5 md:p-6 mb-6 text-white">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <p className="text-gray-400 text-xs font-medium uppercase tracking-wider mb-1">Sistema</p>

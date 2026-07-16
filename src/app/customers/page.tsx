@@ -181,7 +181,7 @@ export default function CustomersPage() {
       <SidebarMenu />
 
       {/* HEADER ESCURO */}
-      <div className="bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 rounded-3xl p-5 md:p-6 mb-6 text-white">
+      <div className="bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 rounded-3xl ml-14 md:ml-0 p-5 md:p-6 mb-6 text-white">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <p className="text-gray-400 text-xs font-medium uppercase tracking-wider mb-1">Cadastros</p>

@@ -142,7 +142,7 @@ export default function CustomerDetailsPage() {
       <SidebarMenu />
 
       {/* HEADER DO CLIENTE */}
-      <div className="bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 rounded-3xl p-5 md:p-6 mb-6 text-white">
+      <div className="bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 rounded-3xl ml-14 md:ml-0 p-5 md:p-6 mb-6 text-white">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center text-xl font-black">
