@@ -2,7 +2,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';
-import { LogOut, User, ChevronDown } from 'lucide-react';
+import { LogOut, User, ChevronDown, Settings } from 'lucide-react';
 
 export default function UserMenu() {
   const [user, setUser] = useState<any>(null);
@@ -65,8 +65,14 @@ export default function UserMenu() {
               )}
             </div>
             <button
+              onClick={() => { setOpen(false); router.push('/profile'); }}
+              className="w-full flex items-center gap-2 px-3 py-2.5 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              <Settings size={16} /> Meu Perfil
+            </button>
+            <button
               onClick={handleLogout}
-              className="w-full flex items-center gap-2 px-3 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
+              className="w-full flex items-center gap-2 px-3 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 transition-colors border-t border-gray-100"
             >
               <LogOut size={16} /> Sair da conta
             </button>
