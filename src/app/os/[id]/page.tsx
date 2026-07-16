@@ -536,7 +536,7 @@ export default function OSDetailPage() {
             <p>{companyInfo.razaoSocial} | CNPJ: {companyInfo.cnpj}</p>
             <p>{companyInfo.enderecoCompleto}</p>
             <p className="mt-2">Impresso via AppÓtica - Sistema de Gestão</p>
-           </div>
+          </div>
         </div>
       </div>
 
@@ -553,7 +553,6 @@ export default function OSDetailPage() {
                 <p className="text-xs text-gray-400">Mensagem para o cliente</p>
               </div>
             </div>
-
             <div className="mb-4">
               <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1.5">Mensagem</label>
               <textarea
@@ -563,13 +562,11 @@ export default function OSDetailPage() {
                 className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none text-gray-950 text-sm leading-relaxed resize-none"
               />
             </div>
-
             {customerPhone && (
               <p className="text-xs text-gray-400 mb-4">
                 Enviar para: <span className="font-medium text-gray-600">{customerPhone}</span>
               </p>
             )}
-
             <div className="flex gap-3">
               <button
                 onClick={() => setShowMessageModal(false)}
@@ -591,6 +588,7 @@ export default function OSDetailPage() {
           </div>
         </div>
       )}
+
     </div>
   );
 }
