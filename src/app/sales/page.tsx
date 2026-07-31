@@ -424,10 +424,10 @@ export default function SalesPage() {
           sale_date: saleDetails.saleDate,
           notes: notesOS,
           frame_width: saleDetails.frame_width || null,
-          bridge_rim: saleDetails.bridge_rim ? parseFloat(saleDetails.bridge_rim) || null : null,
-          major_angle: saleDetails.major_angle ? parseFloat(saleDetails.major_angle) || null : null,
-          dp_os: saleDetails.dp_os ? parseFloat(saleDetails.dp_os) || null : null,
-          altura: saleDetails.altura ? parseFloat(saleDetails.altura) || null : null
+          bridge_rim: saleDetails.bridge_rim || null,
+          major_angle: saleDetails.major_angle || null,
+          dp_os: saleDetails.dp_os || null,
+          altura: saleDetails.altura || null
         };
         if (osNumber.trim()) osPayload.os_number = osNumber.trim();
 
@@ -911,19 +911,19 @@ export default function SalesPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Ponte + Aro (mm)</label>
-              <input type="number" inputMode="decimal" step="0.1" min="0" placeholder="Ex: 18" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={saleDetails.bridge_rim} onChange={(e) => setSaleDetails({...saleDetails, bridge_rim: e.target.value})} />
+              <input type="text" placeholder="Ex: 18" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={saleDetails.bridge_rim} onChange={(e) => setSaleDetails({...saleDetails, bridge_rim: e.target.value})} />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Ang. Maior (°)</label>
-              <input type="number" inputMode="decimal" step="0.1" min="0" placeholder="Ex: 10" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={saleDetails.major_angle} onChange={(e) => setSaleDetails({...saleDetails, major_angle: e.target.value})} />
+              <input type="text" placeholder="Ex: 10" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={saleDetails.major_angle} onChange={(e) => setSaleDetails({...saleDetails, major_angle: e.target.value})} />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">DNP</label>
-              <input type="number" inputMode="decimal" step="0.5" min="0" placeholder="Ex: 62" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={saleDetails.dp_os} onChange={(e) => setSaleDetails({...saleDetails, dp_os: e.target.value})} />
+              <input type="text" placeholder="Ex: 62" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={saleDetails.dp_os} onChange={(e) => setSaleDetails({...saleDetails, dp_os: e.target.value})} />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Centro Optico (mm)</label>
-              <input type="number" inputMode="decimal" step="0.5" min="0" placeholder="Ex: 22" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={saleDetails.altura} onChange={(e) => setSaleDetails({...saleDetails, altura: e.target.value})} />
+              <input type="text" placeholder="Ex: 22" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={saleDetails.altura} onChange={(e) => setSaleDetails({...saleDetails, altura: e.target.value})} />
             </div>
           </div>
           <div className="flex gap-2 mt-3">
