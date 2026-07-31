@@ -375,7 +375,7 @@ export default function OSDetailPage() {
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                       {osData.frame_width != null && (
                         <div className="bg-white p-2.5 rounded-xl border border-gray-100">
-                          <p className="text-[10px] text-gray-400 uppercase">Des. Arm.</p>
+                          <p className="text-[10px] text-gray-400 uppercase">Modelo</p>
                           <p className="font-bold text-gray-800">{osData.frame_width}</p>
                         </div>
                       )}
@@ -513,7 +513,7 @@ export default function OSDetailPage() {
               <p><strong>Lentes:</strong> {osData.notes?.split('\n')[1]?.replace('Lente: ', '') || '---'}</p>
               {(osData.frame_width != null || osData.bridge_rim != null || osData.major_angle != null || osData.dp_os != null || osData.altura != null) && (
                 <div className="grid grid-cols-3 text-center border border-black mt-2">
-                  <div className="border-r border-b border-black p-0.5 font-bold text-[9px]">Des.Arm.</div>
+                  <div className="border-r border-b border-black p-0.5 font-bold text-[9px]">Modelo</div>
                   <div className="border-r border-b border-black p-0.5 font-bold text-[9px]">Ponte+Aro</div>
                   <div className="border-b border-black p-0.5 font-bold text-[9px]">Ang.Maior</div>
                   <div className="border-r border-black p-0.5 text-[9px]">{osData.frame_width != null ? osData.frame_width : '---'}</div>

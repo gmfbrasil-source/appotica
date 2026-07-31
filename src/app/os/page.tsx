@@ -175,8 +175,8 @@ export default function OSPage() {
               <p className="text-xs font-bold text-gray-500 uppercase mt-2">Medições da Armação</p>
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Des. Arm.</label>
-                  <input type="text" placeholder="Ex: 52" className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" value={formData.frame_width} onChange={(e) => setFormData({...formData, frame_width: e.target.value})} />
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Modelo</label>
+                  <input type="text" placeholder="Ex: Ray-Ban" className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" value={formData.frame_width} onChange={(e) => setFormData({...formData, frame_width: e.target.value})} />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">Ponte + Aro (mm)</label>

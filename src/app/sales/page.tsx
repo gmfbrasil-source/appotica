@@ -935,8 +935,8 @@ export default function SalesPage() {
           )}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Des. Arm.</label>
-              <input type="text" placeholder="Ex: 52" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={saleDetails.frame_width} onChange={(e) => setSaleDetails({...saleDetails, frame_width: e.target.value})} />
+              <label className="block text-sm font-medium text-gray-700 mb-1">Modelo</label>
+              <input type="text" placeholder="Ex: Ray-Ban" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={saleDetails.frame_width} onChange={(e) => setSaleDetails({...saleDetails, frame_width: e.target.value})} />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Ponte + Aro (mm)</label>
