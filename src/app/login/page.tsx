@@ -22,6 +22,11 @@ export default function LoginPage() {
     setError(null);
 
     try {
+      if (!supabase) {
+        setError('Erro de configuração: variáveis do Supabase ausentes.');
+        setLoading(false);
+        return;
+      }
       if (isSignUp) {
         const { data, error: signUpError } = await supabase.auth.signUp({
           email,
