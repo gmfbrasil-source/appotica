@@ -607,7 +607,7 @@ export default function SalesPage() {
           </label>
           {!isSunglasses && (
             <>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-3 bg-gray-50 rounded-2xl border border-gray-100">
+              <div className="grid grid-cols-1 gap-4 p-3 bg-gray-50 rounded-2xl border border-gray-100">
                 <div className="space-y-2">
                   <h3 className="font-bold text-xs text-gray-700 border-b pb-1 text-center sm:text-left">Olho Direito (OD)</h3>
                   <div className="grid grid-cols-3 gap-1.5">
@@ -657,8 +657,8 @@ export default function SalesPage() {
           )}
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-3">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Des. Arm. (mm)</label>
-              <input type="number" step="0.1" min="0" placeholder="Ex: 52" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={saleDetails.frame_width} onChange={(e) => setSaleDetails({...saleDetails, frame_width: e.target.value})} />
+              <label className="block text-sm font-medium text-gray-700 mb-1">Des. Arm.</label>
+              <input type="text" placeholder="Ex: 52" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={saleDetails.frame_width} onChange={(e) => setSaleDetails({...saleDetails, frame_width: e.target.value})} />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Ponte + Aro (mm)</label>
@@ -716,7 +716,7 @@ export default function SalesPage() {
                 <input type="text" placeholder="Ex: Ray-Ban Aviador Preto" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={saleDetails.frame} onChange={(e) => setSaleDetails({...saleDetails, frame: e.target.value})} />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Modelo / Grau da Lente</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Lente / Serviço</label>
                 <input type="text" placeholder="Ex: Varilux Crizal Sapphire" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={saleDetails.lenses} onChange={(e) => setSaleDetails({...saleDetails, lenses: e.target.value})} />
               </div>
             </div>
