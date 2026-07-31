@@ -416,6 +416,7 @@ export default function SalesPage() {
       let osData: any = null;
       if (geraOS) {
         const notesOS = `Armação: ${saleDetails.frame || 'Não informada'}\nLente: ${saleDetails.lenses || 'Não informada'}\nObservações: ${saleDetails.notes || 'Nenhuma'}`;
+        console.log('=== OS PAYLOAD INÍCIO ===', { frame_width: saleDetails.frame_width, bridge_rim: saleDetails.bridge_rim, major_angle: saleDetails.major_angle, dp_os: saleDetails.dp_os, altura: saleDetails.altura });
         const osPayload: any = {
           customer_id: finalCustomerId, shop_id: shopId,
           status: 'In_Laboratory',
@@ -457,6 +458,7 @@ export default function SalesPage() {
             osData = osResult;
           }
         } else {
+          console.log('=== INSERINDO OS ===', JSON.stringify(osPayload));
           const { data: osResult, error: osErr } = await supabase
             .from('service_orders')
             .insert([osPayload])
@@ -655,7 +657,8 @@ export default function SalesPage() {
       resetForm();
       fetchCustomers();
     } catch (err: any) {
-      alert('Erro ao finalizar venda: ' + err.message);
+      console.error('Erro completo:', err);
+      alert('Erro ao finalizar venda: ' + (err.details ? err.details + '\n\n' : '') + err.message);
     } finally {
       setLoading(false);
     }
