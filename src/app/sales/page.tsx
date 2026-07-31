@@ -424,10 +424,10 @@ export default function SalesPage() {
           sale_date: saleDetails.saleDate,
           notes: notesOS,
           frame_width: saleDetails.frame_width || null,
-          bridge_rim: saleDetails.bridge_rim || null,
-          major_angle: saleDetails.major_angle || null,
-          dp_os: saleDetails.dp_os || null,
-          altura: saleDetails.altura || null
+          bridge_rim: saleDetails.bridge_rim ? parseFloat(saleDetails.bridge_rim) || null : null,
+          major_angle: saleDetails.major_angle ? parseFloat(saleDetails.major_angle) || null : null,
+          dp_os: saleDetails.dp_os ? parseFloat(saleDetails.dp_os) || null : null,
+          altura: saleDetails.altura ? parseFloat(saleDetails.altura) || null : null
         };
         if (osNumber.trim()) osPayload.os_number = osNumber.trim();
 
