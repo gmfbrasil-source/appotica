@@ -444,7 +444,7 @@ export default function FinancePage() {
       </div>
 
       {showForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[9999]">
           <div className="bg-white rounded-2xl p-6 w-full max-w-md overflow-y-auto max-h-[90vh]">
             <h2 className="text-xl font-bold mb-4">Lançar Movimentação</h2>
             <form onSubmit={handleAddRecord} className="space-y-4">
@@ -797,7 +797,7 @@ export default function FinancePage() {
 
       {/* MODAL DE RELATÓRIO - CONTAS A PAGAR E A RECEBER */}
       {showReportModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[9999]">
           <div className="bg-white rounded-2xl p-6 w-full max-w-3xl max-h-[90vh] overflow-y-auto print-content">
             <div className="flex justify-between items-center mb-6 no-print">
               <h2 className="text-xl font-bold flex items-center gap-2">

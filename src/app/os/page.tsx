@@ -133,7 +133,7 @@ export default function OSPage() {
       </div>
 
       {showForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[9999]">
           <div className="bg-white rounded-2xl p-6 w-full max-w-md">
             <h2 className="text-xl font-bold mb-4">Nova O.S.</h2>
             <form onSubmit={handleAddOrder} className="space-y-4">

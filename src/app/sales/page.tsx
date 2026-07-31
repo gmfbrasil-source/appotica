@@ -1152,7 +1152,7 @@ export default function SalesPage() {
 
       {/* MODAL DE SUCESSO / IMPRESSÃO */}
       {showPrintModal && createdOS && (
-        <div className="fixed inset-0 bg-black/60 z-50 overflow-y-auto">
+        <div className="fixed inset-0 bg-black/60 z-[9999] overflow-y-auto">
           <div className="flex items-start justify-center min-h-full p-4">
           <div className="bg-white rounded-3xl p-6 w-full max-w-2xl shadow-2xl space-y-6">
             <div className="text-center">

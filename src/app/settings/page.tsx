@@ -412,7 +412,7 @@ export default function SettingsPage() {
       </div>
 
       {showForm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[9999]">
           <div className="bg-white rounded-2xl p-6 w-full max-w-md">
             <div className="flex justify-between items-center mb-4">
               <h2 className="text-xl font-bold">{editingId ? 'Editar' : 'Novo'} Método</h2>
@@ -646,7 +646,7 @@ export default function SettingsPage() {
             )}
 
             {editingTemplate && (
-              <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+              <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-[9999]">
                 <div className="bg-white rounded-2xl p-6 w-full max-w-lg">
                   <div className="flex justify-between items-center mb-4">
                     <h3 className="text-lg font-bold text-gray-900">Editar Mensagem</h3>
