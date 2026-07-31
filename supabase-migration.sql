@@ -7,12 +7,13 @@ ALTER TABLE service_orders
 ADD COLUMN IF NOT EXISTS os_number TEXT;
 
 -- Adicionar colunas de medição para O.S. (Des. Arm., Ponte+Aro, Ang. Maior, DNP, Centro Óptico)
+-- frame_width = TEXT (modelo da armação), demais = DECIMAL (medidas numéricas)
 ALTER TABLE service_orders
 ADD COLUMN IF NOT EXISTS frame_width TEXT,
-ADD COLUMN IF NOT EXISTS bridge_rim TEXT,
-ADD COLUMN IF NOT EXISTS major_angle TEXT,
-ADD COLUMN IF NOT EXISTS dp_os TEXT,
-ADD COLUMN IF NOT EXISTS altura TEXT;
+ADD COLUMN IF NOT EXISTS bridge_rim DECIMAL(5,2),
+ADD COLUMN IF NOT EXISTS major_angle DECIMAL(5,2),
+ADD COLUMN IF NOT EXISTS dp_os DECIMAL(5,2),
+ADD COLUMN IF NOT EXISTS altura DECIMAL(5,2);
 
 -- 1. CASCADE delete: ao excluir O.S., financeiro vinculado é excluído
 ALTER TABLE financial_records 
