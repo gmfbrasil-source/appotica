@@ -7,4 +7,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
   console.error('Erro: Variáveis de ambiente do Supabase não configuradas corretamente.');
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Só cria o cliente se as variáveis existirem, para não quebrar build/prerender sem elas
+export const supabase = (supabaseUrl && supabaseAnonKey)
+  ? createClient(supabaseUrl, supabaseAnonKey)
+  : (null as any);

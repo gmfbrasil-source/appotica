@@ -300,8 +300,9 @@ export default function SalesPage() {
           hasCardEntry,
         });
 
-        // Set first due date from sale date (aligned with the edited sale date)
-        setFirstDueDate(os.sale_date || getLocalDate(new Date(os.created_at)));
+        // Primeira parcela vence 30 dias após a data da venda
+        const baseSaleDate = os.sale_date ? parseDateStr(os.sale_date) : new Date(os.created_at);
+        setFirstDueDate(getLocalDate(new Date(baseSaleDate.getTime() + 30 * 24 * 60 * 60 * 1000)));
       } else {
         setPayment(prev => ({ ...prev, method: (methods || paymentMethods)[0]?.id || '', hasCardEntry: false }));
       }
