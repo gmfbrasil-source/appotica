@@ -35,18 +35,18 @@ CREATE TABLE prescriptions (
     customer_id UUID NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
     shop_id UUID NOT NULL REFERENCES shops(id) ON DELETE CASCADE,
     
-    -- Left Eye (Olho Esquerdo - OE)
-    oe_sphere DECIMAL(5,2),
-    oe_cylinder DECIMAL(5,2),
-    oe_axis INTEGER,
+    -- Left Eye (Olho Esquerdo - OE) - TEXT para preservar o que foi digitado
+    oe_sphere TEXT,
+    oe_cylinder TEXT,
+    oe_axis TEXT,
     
     -- Right Eye (Olho Direito - OD)
-    od_sphere DECIMAL(5,2),
-    od_cylinder DECIMAL(5,2),
-    od_axis INTEGER,
+    od_sphere TEXT,
+    od_cylinder TEXT,
+    od_axis TEXT,
     
-    addition DECIMAL(5,2),
-    dp DECIMAL(5,2), -- Distância Pupilar
+    addition TEXT,
+    dp TEXT, -- Distância Pupilar
     notes TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );

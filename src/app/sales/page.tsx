@@ -25,6 +25,20 @@ function getLocalDate(date?: Date): string {
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 }
 
+// Converte valor para número, tratando formato brasileiro (vírgula decimal, ponto milhar)
+function toNum(v: string | null | undefined): number | null {
+  if (v == null || String(v).trim() === '') return null;
+  let s = String(v).trim();
+  if (s.includes(',')) {
+    // Formato brasileiro: remove pontos (milhar) e troca vírgula por ponto
+    s = s.replace(/\./g, '').replace(',', '.');
+  } else {
+    s = s.replace(/\s/g, '');
+  }
+  const n = parseFloat(s);
+  return isNaN(n) ? null : n;
+}
+
 // Parse "YYYY-MM-DD" em timezone local (evita que new Date("2026-06-01") interprete como UTC)
 function parseDateStr(dateStr: string): Date {
   const parts = dateStr.split('-');
@@ -352,14 +366,14 @@ export default function SalesPage() {
           { name: 'Adição', val: prescription.addition, limit: 4 },
         ];
         valuesToCheck.forEach(item => {
-          const num = Math.abs(parseFloat(item.val) || 0);
+          const num = Math.abs(toNum(item.val) || 0);
           if (num > item.limit) warnings.push(`O valor de ${item.name} (${item.val}) está muito alto. Verifique se está correto.`);
         });
-        const axisOD = parseInt(prescription.od_axis);
-        const axisOE = parseInt(prescription.oe_axis);
+        const axisOD = toNum(prescription.od_axis) || 0;
+        const axisOE = toNum(prescription.oe_axis) || 0;
         if (prescription.od_cylinder && (isNaN(axisOD) || axisOD < 0 || axisOD > 180)) warnings.push('O Eixo OD deve estar entre 0 e 180.');
         if (prescription.oe_cylinder && (isNaN(axisOE) || axisOE < 0 || axisOE > 180)) warnings.push('O Eixo OE deve estar entre 0 e 180.');
-        const dp = parseFloat(prescription.dp);
+        const dp = toNum(prescription.dp) || 0;
         if (!isNaN(dp) && (dp < 40 || dp > 80)) warnings.push('A Distância Pupilar (DP) parece incomum (fora de 40-80mm).');
         if (warnings.length > 0) {
           const confirmed = window.confirm(`Atenção: Foram encontrados valores incomuns:\n\n${warnings.join('\n')}\n\nDeseja continuar com a venda mesmo assim?`);
@@ -387,14 +401,14 @@ export default function SalesPage() {
       if (hasPrescriptionData) {
         const parsedPrescription = {
           customer_id: finalCustomerId, shop_id: shopId,
-          oe_sphere: prescription.oe_sphere ? parseFloat(prescription.oe_sphere) : null,
-          oe_cylinder: prescription.oe_cylinder ? parseFloat(prescription.oe_cylinder) : null,
-          oe_axis: prescription.oe_axis ? parseInt(prescription.oe_axis) : null,
-          od_sphere: prescription.od_sphere ? parseFloat(prescription.od_sphere) : null,
-          od_cylinder: prescription.od_cylinder ? parseFloat(prescription.od_cylinder) : null,
-          od_axis: prescription.od_axis ? parseInt(prescription.od_axis) : null,
-          addition: prescription.addition ? parseFloat(prescription.addition) : null,
-          dp: prescription.dp ? parseFloat(prescription.dp) : null,
+          oe_sphere: prescription.oe_sphere || null,
+          oe_cylinder: prescription.oe_cylinder || null,
+          oe_axis: prescription.oe_axis || null,
+          od_sphere: prescription.od_sphere || null,
+          od_cylinder: prescription.od_cylinder || null,
+          od_axis: prescription.od_axis || null,
+          addition: prescription.addition || null,
+          dp: prescription.dp || null,
           notes: prescription.notes || null
         };
         const { data: prescData, error: prescErr } = await supabase
@@ -403,8 +417,8 @@ export default function SalesPage() {
         finalPrescriptionId = prescData.id;
       }
 
-      const totalVal = parseFloat(saleDetails.total_value);
-      if (isNaN(totalVal)) throw new Error('Insira um valor total válido para a venda.');
+      const totalVal = toNum(saleDetails.total_value);
+      if (totalVal === null) throw new Error('Insira um valor total válido para a venda.');
 
       // Validação da data da venda
       const saleDateObj = parseDateStr(saleDetails.saleDate);
@@ -425,10 +439,10 @@ export default function SalesPage() {
           sale_date: saleDetails.saleDate,
           notes: notesOS,
           frame_width: saleDetails.frame_width || null,
-          bridge_rim: saleDetails.bridge_rim ? parseFloat(saleDetails.bridge_rim) || null : null,
-          major_angle: saleDetails.major_angle ? parseFloat(saleDetails.major_angle) || null : null,
-          dp_os: saleDetails.dp_os ? parseFloat(saleDetails.dp_os) || null : null,
-          altura: saleDetails.altura ? parseFloat(saleDetails.altura) || null : null
+          bridge_rim: saleDetails.bridge_rim || null,
+          major_angle: saleDetails.major_angle || null,
+          dp_os: saleDetails.dp_os || null,
+          altura: saleDetails.altura || null
         };
         if (osNumber.trim()) osPayload.os_number = osNumber.trim();
 
@@ -497,7 +511,7 @@ export default function SalesPage() {
          const newFirstDue = new Date(oldFirstDue.getTime() + deltaMs);
          effectiveFirstDueDate = getLocalDate(newFirstDue);
        }
-       const entrada = Math.min(parseFloat(payment.downPayment) || 0, totalVal);
+       const entrada = Math.min(toNum(payment.downPayment) || 0, totalVal);
        const restante = Math.round((totalVal - entrada) * 100) / 100;
        const instCount = Math.max(parseInt(payment.installments) || 0, 0);
        const osPrefix = osData?.os_number ? `OS ${osData.os_number}` : 'Venda';
@@ -914,19 +928,19 @@ export default function SalesPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Ponte + Aro (mm)</label>
-              <input type="number" inputMode="decimal" step="0.1" min="0" placeholder="Ex: 18" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={saleDetails.bridge_rim} onChange={(e) => setSaleDetails({...saleDetails, bridge_rim: e.target.value})} />
+              <input type="text" placeholder="Ex: 18" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={saleDetails.bridge_rim} onChange={(e) => setSaleDetails({...saleDetails, bridge_rim: e.target.value})} />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Ang. Maior (°)</label>
-              <input type="number" inputMode="decimal" step="0.1" min="0" placeholder="Ex: 10" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={saleDetails.major_angle} onChange={(e) => setSaleDetails({...saleDetails, major_angle: e.target.value})} />
+              <input type="text" placeholder="Ex: 10" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={saleDetails.major_angle} onChange={(e) => setSaleDetails({...saleDetails, major_angle: e.target.value})} />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">DNP</label>
-              <input type="number" inputMode="decimal" step="0.5" min="0" placeholder="Ex: 62" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={saleDetails.dp_os} onChange={(e) => setSaleDetails({...saleDetails, dp_os: e.target.value})} />
+              <input type="text" placeholder="Ex: 62" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={saleDetails.dp_os} onChange={(e) => setSaleDetails({...saleDetails, dp_os: e.target.value})} />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Centro Optico (mm)</label>
-              <input type="number" inputMode="decimal" step="0.5" min="0" placeholder="Ex: 22" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={saleDetails.altura} onChange={(e) => setSaleDetails({...saleDetails, altura: e.target.value})} />
+              <input type="text" placeholder="Ex: 22" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={saleDetails.altura} onChange={(e) => setSaleDetails({...saleDetails, altura: e.target.value})} />
             </div>
           </div>
           <div className="flex gap-2 mt-3">
@@ -937,7 +951,7 @@ export default function SalesPage() {
         </AccordionSection>
 
         {/* SEÇÃO 3: DETALHES DA VENDA */}
-        <AccordionSection num={3} title="Produto / Valor" done={section3Done} canOpen={section1Done} isOpen={activeSection === 3} onToggle={() => setActiveSection(activeSection === 3 ? 0 : 3)} summary={section3Done ? formatCurrency(parseFloat(saleDetails.total_value || '0')) : ''}>
+        <AccordionSection num={3} title="Produto / Valor" done={section3Done} canOpen={section1Done} isOpen={activeSection === 3} onToggle={() => setActiveSection(activeSection === 3 ? 0 : 3)} summary={section3Done ? formatCurrency(toNum(saleDetails.total_value) || 0) : ''}>
           <label className="flex items-center gap-2 mb-4 cursor-pointer">
             <input
               type="checkbox"
@@ -1029,9 +1043,9 @@ export default function SalesPage() {
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Valor de Entrada (Sinal)</label>
               <input type="number" inputMode="decimal" step="0.01" min="0" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="R$ 0,00" value={payment.downPayment} onChange={(e) => setPayment({...payment, downPayment: e.target.value})} />
-              {parseFloat(saleDetails.total_value) > 0 && parseFloat(payment.downPayment) > 0 && (
+              {(toNum(saleDetails.total_value) || 0) > 0 && (toNum(payment.downPayment) || 0) > 0 && (
                 <p className="text-xs text-gray-500 mt-1">
-                  Resta: <span className="font-bold text-gray-800">{formatCurrency(Math.max(0, parseFloat(saleDetails.total_value || '0') - parseFloat(payment.downPayment || '0')))}</span>
+                  Resta: <span className="font-bold text-gray-800">{formatCurrency(Math.max(0, (toNum(saleDetails.total_value) || 0) - (toNum(payment.downPayment) || 0)))}</span>
                 </p>
               )}
             </div>
@@ -1073,7 +1087,7 @@ export default function SalesPage() {
           )}
 
           {/* Status da Entrada: visível quando tem entrada */}
-          {(parseFloat(payment.downPayment) > 0 || payment.hasCardEntry) && (
+          {((toNum(payment.downPayment) || 0) > 0 || payment.hasCardEntry) && (
             <div className="mt-3">
               <label className="block text-sm font-medium text-gray-700 mb-1">Status da Entrada</label>
               <select className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={payment.entryStatus} onChange={(e) => setPayment({...payment, entryStatus: e.target.value})}>
@@ -1085,7 +1099,7 @@ export default function SalesPage() {
           )}
 
           {/* Status do Pagamento (à vista): sem entrada e sem parcelas */}
-          {!selectedMethod?.is_card && !parseFloat(payment.downPayment) && parseInt(payment.installments) === 0 && (
+          {!selectedMethod?.is_card && !(toNum(payment.downPayment) || 0) && parseInt(payment.installments) === 0 && (
             <div className="mt-3">
               <label className="block text-sm font-medium text-gray-700 mb-1">Status do Pagamento</label>
               <select className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={payment.status} onChange={(e) => setPayment({...payment, status: e.target.value})}>

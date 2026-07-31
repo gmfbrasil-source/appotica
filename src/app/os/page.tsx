@@ -6,6 +6,19 @@ import { Plus, Package, Truck, CheckCircle, Clock, Pencil } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import SidebarMenu from '@/components/SidebarMenu';
 
+// Converte valor para número, tratando formato brasileiro (vírgula decimal, ponto milhar)
+function toNum(v: string | null | undefined): number | null {
+  if (v == null || String(v).trim() === '') return null;
+  let s = String(v).trim();
+  if (s.includes(',')) {
+    s = s.replace(/\./g, '').replace(',', '.');
+  } else {
+    s = s.replace(/\s/g, '');
+  }
+  const n = parseFloat(s);
+  return isNaN(n) ? null : n;
+}
+
 function parseLocalDate(dateStr: string): Date {
   if (!dateStr) return new Date();
   const parts = dateStr.split('T')[0].split('-');
@@ -64,7 +77,7 @@ export default function OSPage() {
       .from('service_orders')
       .insert([{
         customer_id: formData.customer_id,
-        total_value: parseFloat(formData.total_value),
+        total_value: toNum(formData.total_value) || 0,
         scheduled_date: formData.scheduled_date,
         status: formData.status,
         notes: formData.notes,
@@ -167,19 +180,19 @@ export default function OSPage() {
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">Ponte + Aro (mm)</label>
-                  <input type="number" step="0.1" min="0" placeholder="18" className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" value={formData.bridge_rim} onChange={(e) => setFormData({...formData, bridge_rim: e.target.value})} />
+                  <input type="text" placeholder="18" className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" value={formData.bridge_rim} onChange={(e) => setFormData({...formData, bridge_rim: e.target.value})} />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">Ang. Maior (°)</label>
-                  <input type="number" step="0.1" min="0" placeholder="10" className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" value={formData.major_angle} onChange={(e) => setFormData({...formData, major_angle: e.target.value})} />
+                  <input type="text" placeholder="10" className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" value={formData.major_angle} onChange={(e) => setFormData({...formData, major_angle: e.target.value})} />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">D.P. (mm)</label>
-                  <input type="number" step="0.5" min="0" placeholder="62" className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" value={formData.dp_os} onChange={(e) => setFormData({...formData, dp_os: e.target.value})} />
+                  <input type="text" placeholder="62" className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" value={formData.dp_os} onChange={(e) => setFormData({...formData, dp_os: e.target.value})} />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">Centro Optico (mm)</label>
-                  <input type="number" step="0.5" min="0" placeholder="22" className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" value={formData.altura} onChange={(e) => setFormData({...formData, altura: e.target.value})} />
+                  <input type="text" placeholder="22" className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" value={formData.altura} onChange={(e) => setFormData({...formData, altura: e.target.value})} />
                 </div>
               </div>
               <div>
