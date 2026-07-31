@@ -256,7 +256,11 @@ export default function CustomerDetailsPage() {
                     <p className={`text-[10px] font-bold uppercase ${
                       order.status === 'Delivered' ? 'text-green-500' : 'text-blue-500'
                     }`}>
-                      {order.status.replace('_', ' ')}
+                      {order.status === 'Open' ? 'Aberto' :
+                       order.status === 'In_Laboratory' ? 'Em Laboratório' :
+                       order.status === 'Ready' ? 'Pronto' :
+                       order.status === 'Delivered' ? 'Entregue' :
+                       order.status === 'Cancelled' ? 'Cancelado' : order.status.replace('_', ' ')}
                     </p>
                   </div>
                 </Link>

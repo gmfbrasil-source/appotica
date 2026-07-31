@@ -107,6 +107,14 @@ export default function OSPage() {
     Cancelled: { icon: <Clock size={16} />, color: 'bg-red-100 text-red-600' },
   };
 
+  const statusLabels: Record<string, string> = {
+    Open: 'Aberto',
+    In_Laboratory: 'Em Laboratório',
+    Ready: 'Pronto',
+    Delivered: 'Entregue',
+    Cancelled: 'Cancelado',
+  };
+
   return (
     <div className="min-h-screen bg-gray-50/50">
       <div className="max-w-7xl mx-auto p-4 md:p-6 lg:p-8 pb-24">
@@ -258,7 +266,7 @@ export default function OSPage() {
                 </div>
                 <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold uppercase ${statusConfig[order.status as keyof typeof statusConfig]?.color || 'bg-gray-100'}`}>
                   {statusConfig[order.status as keyof typeof statusConfig]?.icon}
-                  {order.status.replace('_', ' ')}
+                  {statusLabels[order.status] || order.status.replace('_', ' ')}
                 </div>
               </div>
               <div className="flex justify-between items-center mt-4 pt-3 border-t border-gray-50">
