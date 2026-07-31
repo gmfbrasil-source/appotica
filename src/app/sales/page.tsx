@@ -256,18 +256,23 @@ export default function SalesPage() {
 
       if (fins && fins.length > 0) {
         const incomeRecords = fins.filter((f: any) => f.type === 'Income');
-        const instRecords = incomeRecords.filter((f: any) => f.description.match(/- \d{2}\/\d{2}$/));
+        const instRecords = incomeRecords.filter((f: any) => f.description.match(/\([^)]*\) - \d{2}\/\d{2}$/) || f.description.match(/- \d{2}\/\d{2}$/));
         const entryRecord = incomeRecords.find((f: any) => f.description.includes('(Entrada)'));
         const vistaRecord = incomeRecords.find((f: any) => f.description.includes('(À Vista)'));
+        const cardRecord = incomeRecords.find((f: any) => f.description.match(/\([^)]*\) - \d+x$/));
 
         // Find payment method by matching description with method names
         const availMethods = methods || paymentMethods;
         let matchedMethodId = '';
         for (const m of availMethods) {
-          if (incomeRecords.some((f: any) => f.description.includes(m.name))) {
+          if (fins.some((f: any) => f.description.includes(m.name))) {
             matchedMethodId = m.id;
             break;
           }
+        }
+        // Fallback para registros antigos sem o nome do método na descrição
+        if (!matchedMethodId) {
+          matchedMethodId = (availMethods[0]?.id) || '';
         }
 
         // Detect card payment (has fee records)
@@ -279,11 +284,18 @@ export default function SalesPage() {
         const entryAmount = entryRecord ? entryRecord.amount : 0;
         const hasPending = fins.some((f: any) => f.status === 'Pending');
 
+        // Restaura nº de parcelas do cartão a partir da descrição "… (Método) - Nx"
+        let cardInst = 1;
+        if (cardRecord) {
+          const m = cardRecord.description.match(/\([^)]*\) - (\d+)x$/);
+          if (m) cardInst = parseInt(m[1], 10);
+        }
+
         setPayment({
           method: matchedMethodId || payment.method,
           downPayment: entryAmount > 0 ? String(entryAmount) : '0',
           entryStatus: entryRecord?.status || 'Paid',
-          installments: String(hasFeeRecord ? 1 : (instCount || 1)),
+          installments: String(hasFeeRecord ? (cardInst || 1) : (instCount || 1)),
           status: hasPending ? 'Pending' : 'Paid',
           hasCardEntry,
         });
@@ -527,7 +539,7 @@ export default function SalesPage() {
           if (payment.hasCardEntry && entrada > 0) {
             financialInserts.push({
               shop_id: shopId, type: 'Income',
-               description: `${osPrefix} (Entrada)`,
+               description: `${osPrefix} (${selectedMethod.name}) (Entrada)`,
               amount: entrada,
               due_date: hojeStr,
               payment_date: payment.entryStatus === 'Paid' ? hojeStr : null,
@@ -540,7 +552,7 @@ export default function SalesPage() {
           // Recebimento do cartão
           financialInserts.push({
             shop_id: shopId, type: 'Income',
-             description: `${osPrefix} (${selectedMethod.name})`,
+             description: `${osPrefix} (${selectedMethod.name}) - ${instForFee}x`,
             amount: cardAmount,
             due_date: hojeStr,
             payment_date: hojeStr,
@@ -568,7 +580,7 @@ export default function SalesPage() {
             const entryDue = instCount > 0 ? parseDateStr(effectiveFirstDueDate) : hoje;
             financialInserts.push({
               shop_id: shopId, type: 'Income',
-               description: `${osPrefix} (Entrada)`,
+               description: `${osPrefix} (${selectedMethod.name}) (Entrada)`,
               amount: entrada,
               due_date: getLocalDate(entryDue),
               payment_date: payment.entryStatus === 'Paid' ? hojeStr : null,
@@ -589,7 +601,7 @@ export default function SalesPage() {
               due.setDate(due.getDate() + i * 30);
               financialInserts.push({
                 shop_id: shopId, type: 'Income',
-                 description: `${osPrefix} - ${String(i+1).padStart(2, '0')}/${String(instCount).padStart(2, '0')}`,
+                 description: `${osPrefix} (${selectedMethod.name}) - ${String(i+1).padStart(2, '0')}/${String(instCount).padStart(2, '0')}`,
                 amount: valorParcela,
                 due_date: getLocalDate(due),
                 payment_date: null,
@@ -604,7 +616,7 @@ export default function SalesPage() {
           if (entrada === 0 && instCount === 0) {
             financialInserts.push({
               shop_id: shopId, type: 'Income',
-               description: `${osPrefix} (À Vista)`,
+               description: `${osPrefix} (${selectedMethod.name}) (À Vista)`,
               amount: totalVal,
               due_date: hojeStr,
               payment_date: payment.status === 'Paid' ? hojeStr : null,
