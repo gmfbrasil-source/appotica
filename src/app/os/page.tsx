@@ -70,7 +70,7 @@ export default function OSPage() {
         notes: formData.notes,
         os_number: formData.os_number,
         shop_id: profile.shop_id,
-        frame_width: formData.frame_width ? parseFloat(formData.frame_width) : null,
+        frame_width: formData.frame_width || null,
         bridge_rim: formData.bridge_rim ? parseFloat(formData.bridge_rim) : null,
         major_angle: formData.major_angle ? parseFloat(formData.major_angle) : null,
         dp_os: formData.dp_os ? parseFloat(formData.dp_os) : null,
@@ -162,8 +162,8 @@ export default function OSPage() {
               <p className="text-xs font-bold text-gray-500 uppercase mt-2">Medições da Armação</p>
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Des. Arm. (mm)</label>
-                  <input type="number" step="0.1" min="0" placeholder="52" className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" value={formData.frame_width} onChange={(e) => setFormData({...formData, frame_width: e.target.value})} />
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Des. Arm.</label>
+                  <input type="text" placeholder="Ex: 52" className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" value={formData.frame_width} onChange={(e) => setFormData({...formData, frame_width: e.target.value})} />
                 </div>
                 <div>
                   <label className="block text-xs font-medium text-gray-600 mb-1">Ponte + Aro (mm)</label>

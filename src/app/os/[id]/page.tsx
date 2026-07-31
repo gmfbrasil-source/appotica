@@ -376,7 +376,7 @@ export default function OSDetailPage() {
                       {osData.frame_width != null && (
                         <div className="bg-white p-2.5 rounded-xl border border-gray-100">
                           <p className="text-[10px] text-gray-400 uppercase">Des. Arm.</p>
-                          <p className="font-bold text-gray-800">{osData.frame_width} mm</p>
+                          <p className="font-bold text-gray-800">{osData.frame_width}</p>
                         </div>
                       )}
                       {osData.bridge_rim != null && (
@@ -516,7 +516,7 @@ export default function OSDetailPage() {
                   <div className="border-r border-b border-black p-0.5 font-bold text-[9px]">Des.Arm.</div>
                   <div className="border-r border-b border-black p-0.5 font-bold text-[9px]">Ponte+Aro</div>
                   <div className="border-b border-black p-0.5 font-bold text-[9px]">Ang.Maior</div>
-                  <div className="border-r border-black p-0.5 text-[9px]">{osData.frame_width != null ? osData.frame_width + 'mm' : '---'}</div>
+                  <div className="border-r border-black p-0.5 text-[9px]">{osData.frame_width != null ? osData.frame_width : '---'}</div>
                   <div className="border-r border-black p-0.5 text-[9px]">{osData.bridge_rim != null ? osData.bridge_rim + 'mm' : '---'}</div>
                   <div className="p-0.5 text-[9px]">{osData.major_angle != null ? osData.major_angle + '' : '---'}</div>
                   <div className="border-r border-t border-black p-0.5 font-bold text-[9px]">D.P.</div>

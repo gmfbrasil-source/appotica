@@ -8,7 +8,7 @@ ADD COLUMN IF NOT EXISTS os_number TEXT;
 
 -- Adicionar colunas de medição para O.S. (Des. Arm., Ponte+Aro, Ang. Maior, D.P., Altura)
 ALTER TABLE service_orders
-ADD COLUMN IF NOT EXISTS frame_width DECIMAL(5,2),
+ADD COLUMN IF NOT EXISTS frame_width TEXT,
 ADD COLUMN IF NOT EXISTS bridge_rim DECIMAL(5,2),
 ADD COLUMN IF NOT EXISTS major_angle DECIMAL(5,2),
 ADD COLUMN IF NOT EXISTS dp_os DECIMAL(5,2),
