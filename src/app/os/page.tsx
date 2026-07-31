@@ -2,8 +2,15 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { formatCurrency } from '@/lib/format';
-import { Plus, Package, Truck, CheckCircle, Clock } from 'lucide-react';
+import { Plus, Package, Truck, CheckCircle, Clock, Pencil } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import SidebarMenu from '@/components/SidebarMenu';
+
+function parseLocalDate(dateStr: string): Date {
+  if (!dateStr) return new Date();
+  const parts = dateStr.split('T')[0].split('-');
+  return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+}
 
 export default function OSPage() {
   const router = useRouter();
@@ -88,15 +95,28 @@ export default function OSPage() {
   };
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Ordens de Serviço</h1>
-        <button 
-          onClick={() => setShowForm(true)}
-          className="bg-blue-600 text-white p-2 rounded-full shadow-lg hover:bg-blue-700 transition-colors"
-        >
-          <Plus size={24} />
-        </button>
+    <div className="min-h-screen bg-gray-50/50">
+      <div className="max-w-7xl mx-auto p-4 md:p-6 lg:p-8 pb-24">
+
+      <SidebarMenu />
+
+      {/* HEADER ESCURO */}
+      <div className="bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 rounded-3xl ml-14 md:ml-0 p-5 md:p-6 mb-6 text-white">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <p className="text-gray-400 text-xs font-medium uppercase tracking-wider mb-1">Gestão</p>
+            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">Ordens de Serviço</h1>
+            <p className="text-gray-400 text-sm mt-1">
+              Acompanhe todas as O.S. da sua loja
+            </p>
+          </div>
+          <button
+            onClick={() => setShowForm(true)}
+            className="bg-white text-gray-900 px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-gray-100 transition-colors flex items-center gap-2 shadow-lg shadow-white/10"
+          >
+            <Plus size={18} /> Nova O.S.
+          </button>
+        </div>
       </div>
 
       {showForm && (
@@ -158,7 +178,7 @@ export default function OSPage() {
                   <input type="number" step="0.5" min="0" placeholder="62" className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" value={formData.dp_os} onChange={(e) => setFormData({...formData, dp_os: e.target.value})} />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-gray-600 mb-1">Altura (mm)</label>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">Centro Optico (mm)</label>
                   <input type="number" step="0.5" min="0" placeholder="22" className="w-full p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" value={formData.altura} onChange={(e) => setFormData({...formData, altura: e.target.value})} />
                 </div>
               </div>
@@ -209,8 +229,15 @@ export default function OSPage() {
             <div 
               key={order.id} 
               onClick={() => router.push(`/os/${order.id}`)}
-              className="p-4 bg-white rounded-xl border border-gray-100 shadow-sm hover:border-blue-200 transition-all cursor-pointer"
+              className="p-4 bg-white rounded-2xl border border-gray-100 shadow-sm hover:border-blue-200 hover:shadow-md transition-all cursor-pointer relative group"
             >
+              <button
+                onClick={(e) => { e.stopPropagation(); router.push(`/sales?edit=${order.id}`); }}
+                className="absolute top-2 right-2 bg-white border border-gray-200 text-blue-600 hover:text-blue-800 p-1.5 rounded-lg hover:bg-blue-50 transition-colors shadow-sm z-10"
+                title="Editar venda"
+              >
+                <Pencil size={15} />
+              </button>
               <div className="flex justify-between items-start mb-2">
                 <div>
                   <p className="font-bold text-gray-800">{order.customers?.name || 'Cliente desconhecido'}</p>
@@ -224,7 +251,7 @@ export default function OSPage() {
               <div className="flex justify-between items-center mt-4 pt-3 border-t border-gray-50">
                 <div className="flex items-center text-xs text-gray-500">
                   <Clock size={12} className="mr-1" />
-                  {order.scheduled_date ? new Date(order.scheduled_date).toLocaleDateString('pt-BR') : 'Sem data'}
+                  {order.scheduled_date ? parseLocalDate(order.scheduled_date).toLocaleDateString('pt-BR') : 'Sem data'}
                 </div>
                 <p className="font-bold text-blue-600">{formatCurrency(order.total_value || 0)}</p>
               </div>
@@ -235,6 +262,7 @@ export default function OSPage() {
           )}
         </div>
       )}
+      </div>
     </div>
   );
 }

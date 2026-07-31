@@ -4,6 +4,13 @@ import { supabase } from '@/lib/supabase';
 import { formatCurrency, companyInfo } from '@/lib/format';
 import { Plus, Search, User, ChevronDown, MessageCircle, AlertCircle, Calendar, DollarSign, ShoppingBag, X, Phone, Mail, FileText, CreditCard, CheckCircle, Clock, ArrowRight, MapPin, Pencil } from 'lucide-react';
 import Link from 'next/link';
+import SidebarMenu from '@/components/SidebarMenu';
+
+function parseLocalDate(dateStr: string): Date {
+  if (!dateStr) return new Date();
+  const parts = dateStr.split('T')[0].split('-');
+  return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+}
 
 export default function CustomersPage() {
   const [customers, setCustomers] = useState<any[]>([]);
@@ -69,7 +76,7 @@ export default function CustomersPage() {
       setCustomerOrders(ordersData || []);
       const { data: finData } = await supabase
         .from('financial_records')
-        .select('*')
+        .select('*, service_orders(os_number)')
         .eq('customer_id', customer.id)
         .order('due_date', { ascending: true });
       setCustomerFinancials(finData || []);
@@ -168,32 +175,48 @@ export default function CustomersPage() {
   }
 
   return (
-    <div className="p-4 md:p-6 max-w-4xl mx-auto pb-24">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Clientes</h1>
-        <button
-          onClick={() => { setFormData({ name: '', phone: '', email: '', cpf: '', cnpj: '', address: '' }); setShowForm(true); }}
-          className="bg-blue-600 text-white p-2 rounded-full shadow-lg hover:bg-blue-700 transition-colors"
-        >
-          <Plus size={24} />
-        </button>
+    <div className="min-h-screen bg-gray-50/50">
+      <div className="max-w-4xl mx-auto p-4 md:p-6 lg:p-8 pb-24">
+
+      <SidebarMenu />
+
+      {/* HEADER ESCURO */}
+      <div className="bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 rounded-3xl ml-14 md:ml-0 p-5 md:p-6 mb-6 text-white">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <p className="text-gray-400 text-xs font-medium uppercase tracking-wider mb-1">Cadastros</p>
+            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">Clientes</h1>
+            <p className="text-gray-400 text-sm mt-1">
+              Gerencie seus clientes e acompanhe compras
+            </p>
+          </div>
+          <button
+            onClick={() => { setFormData({ name: '', phone: '', email: '', cpf: '', cnpj: '', address: '' }); setShowForm(true); }}
+            className="bg-white text-gray-900 px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-gray-100 transition-colors flex items-center gap-2 shadow-lg shadow-white/10"
+          >
+            <Plus size={18} /> Novo Cliente
+          </button>
+        </div>
       </div>
 
-      <div className="relative mb-6">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-        <input
-          type="text"
-          placeholder="Buscar por nome, CPF ou telefone..."
-          className="w-full pl-10 p-3 bg-gray-100 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-gray-950"
-          value={searchQuery}
-          onChange={(e) => {
-            setSearchQuery(e.target.value);
-            if (selectedCustomer) {
-              setSelectedCustomer(null);
-              setExpandedFinSection(null);
-            }
-          }}
-        />
+      {/* BUSCA */}
+      <div className="bg-white p-4 rounded-3xl border border-gray-100 shadow-sm mb-6">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+          <input
+            type="text"
+            placeholder="Buscar por nome, CPF ou telefone..."
+            className="w-full pl-10 p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-gray-950 text-sm"
+            value={searchQuery}
+            onChange={(e) => {
+              setSearchQuery(e.target.value);
+              if (selectedCustomer) {
+                setSelectedCustomer(null);
+                setExpandedFinSection(null);
+              }
+            }}
+          />
+        </div>
       </div>
 
       {showForm && (
@@ -246,7 +269,7 @@ export default function CustomersPage() {
             <div key={customer.id}>
               <div
                 onClick={() => handleCustomerClick(customer)}
-                className="flex items-center p-4 bg-white rounded-xl border border-gray-100 shadow-sm cursor-pointer hover:shadow-md transition-shadow"
+                className="flex items-center p-4 bg-white rounded-2xl border border-gray-100 shadow-sm cursor-pointer hover:shadow-md transition-all"
               >
                 <div className="bg-blue-100 p-2 rounded-full mr-4">
                   <User size={20} className="text-blue-600" />
@@ -350,7 +373,7 @@ export default function CustomersPage() {
                       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                         <button onClick={() => toggleFinSection('paid')} className={`text-left p-3 rounded-xl border transition-all overflow-hidden ${expandedFinSection === 'paid' ? 'bg-green-100 border-green-300 shadow-sm' : 'bg-green-50 border-green-100 hover:bg-green-100'}`}>
                           <p className="text-green-600 text-[10px] font-medium uppercase">Recebido</p>
-                          <p className="text-lg font-bold text-green-700 truncate">{formatCurrency(totalPaidIncome + totalPaidExpense)}</p>
+                          <p className="text-lg font-bold text-green-700 truncate">{formatCurrency(totalPaidIncome)}</p>
                         </button>
                         <button onClick={() => toggleFinSection('to_receive')} className={`text-left p-3 rounded-xl border transition-all overflow-hidden ${expandedFinSection === 'to_receive' ? 'bg-yellow-100 border-yellow-300 shadow-sm' : 'bg-yellow-50 border-yellow-100 hover:bg-yellow-100'}`}>
                           <p className="text-yellow-600 text-[10px] font-medium uppercase">A Receber</p>
@@ -387,7 +410,12 @@ export default function CustomersPage() {
                               {paidIncomeRecords.map((rec: any) => (
                                 <div key={rec.id} className="flex items-center justify-between text-sm py-1.5 border-b border-gray-50 last:border-0">
                                   <div>
-                                    <p className="text-gray-800 font-medium">{rec.description}</p>
+                                    <p className="text-gray-800 font-medium">
+                                {rec.description}
+                                {rec.service_orders?.os_number && (
+                                  <span className="ml-1 text-[10px] bg-gray-100 text-gray-600 font-bold px-1 py-0.5 rounded">OS #{rec.service_orders.os_number}</span>
+                                )}
+                              </p>
                                     <p className="text-[11px] text-gray-400 flex items-center gap-1">
                                       <Calendar size={10} /> {new Date(rec.due_date).toLocaleDateString('pt-BR')}
                                     </p>
@@ -403,7 +431,12 @@ export default function CustomersPage() {
                               {paidExpenseRecords.map((rec: any) => (
                                 <div key={rec.id} className="flex items-center justify-between text-sm py-1.5 border-b border-gray-50 last:border-0">
                                   <div>
-                                    <p className="text-gray-800 font-medium">{rec.description}</p>
+                                    <p className="text-gray-800 font-medium">
+                                {rec.description}
+                                {rec.service_orders?.os_number && (
+                                  <span className="ml-1 text-[10px] bg-gray-100 text-gray-600 font-bold px-1 py-0.5 rounded">OS #{rec.service_orders.os_number}</span>
+                                )}
+                              </p>
                                     <p className="text-[11px] text-gray-400 flex items-center gap-1">
                                       <Calendar size={10} /> {new Date(rec.due_date).toLocaleDateString('pt-BR')}
                                     </p>
@@ -425,7 +458,12 @@ export default function CustomersPage() {
                           {pendingIncomeRecords.map((rec: any) => (
                             <div key={rec.id} className="flex items-center justify-between text-sm py-1.5 border-b border-gray-50 last:border-0">
                               <div>
-                                <p className="text-gray-800 font-medium">{rec.description}</p>
+                                <p className="text-gray-800 font-medium">
+                                {rec.description}
+                                {rec.service_orders?.os_number && (
+                                  <span className="ml-1 text-[10px] bg-gray-100 text-gray-600 font-bold px-1 py-0.5 rounded">OS #{rec.service_orders.os_number}</span>
+                                )}
+                              </p>
                                 <p className="text-[11px] text-gray-400 flex items-center gap-1">
                                   <Calendar size={10} /> Vence: {new Date(rec.due_date).toLocaleDateString('pt-BR')}
                                 </p>
@@ -445,7 +483,12 @@ export default function CustomersPage() {
                           {pendingExpenseRecords.map((rec: any) => (
                             <div key={rec.id} className="flex items-center justify-between text-sm py-1.5 border-b border-gray-50 last:border-0">
                               <div>
-                                <p className="text-gray-800 font-medium">{rec.description}</p>
+                                <p className="text-gray-800 font-medium">
+                                {rec.description}
+                                {rec.service_orders?.os_number && (
+                                  <span className="ml-1 text-[10px] bg-gray-100 text-gray-600 font-bold px-1 py-0.5 rounded">OS #{rec.service_orders.os_number}</span>
+                                )}
+                              </p>
                                 <p className="text-[11px] text-gray-400 flex items-center gap-1">
                                   <Calendar size={10} /> Vence: {new Date(rec.due_date).toLocaleDateString('pt-BR')}
                                 </p>
@@ -468,7 +511,12 @@ export default function CustomersPage() {
                               {overdueIncome.map((rec: any) => (
                                 <div key={rec.id} className="flex items-center justify-between text-sm py-1.5 border-b border-gray-50 last:border-0">
                                   <div>
-                                    <p className="text-gray-800 font-medium">{rec.description}</p>
+                                    <p className="text-gray-800 font-medium">
+                                {rec.description}
+                                {rec.service_orders?.os_number && (
+                                  <span className="ml-1 text-[10px] bg-gray-100 text-gray-600 font-bold px-1 py-0.5 rounded">OS #{rec.service_orders.os_number}</span>
+                                )}
+                              </p>
                                     <p className="text-[11px] text-red-400 flex items-center gap-1">
                                       <Calendar size={10} /> Venceu: {new Date(rec.due_date).toLocaleDateString('pt-BR')}
                                     </p>
@@ -484,7 +532,12 @@ export default function CustomersPage() {
                               {overdueExpense.map((rec: any) => (
                                 <div key={rec.id} className="flex items-center justify-between text-sm py-1.5 border-b border-gray-50 last:border-0">
                                   <div>
-                                    <p className="text-gray-800 font-medium">{rec.description}</p>
+                                    <p className="text-gray-800 font-medium">
+                                {rec.description}
+                                {rec.service_orders?.os_number && (
+                                  <span className="ml-1 text-[10px] bg-gray-100 text-gray-600 font-bold px-1 py-0.5 rounded">OS #{rec.service_orders.os_number}</span>
+                                )}
+                              </p>
                                     <p className="text-[11px] text-red-400 flex items-center gap-1">
                                       <Calendar size={10} /> Venceu: {new Date(rec.due_date).toLocaleDateString('pt-BR')}
                                     </p>
@@ -508,7 +561,7 @@ export default function CustomersPage() {
                               <Link key={os.id} href={`/os/${os.id}`} className="flex items-center justify-between p-2.5 bg-gray-50 rounded-xl border border-gray-100 hover:bg-gray-100 transition-colors">
                                 <div>
                                    <p className="text-sm font-semibold text-gray-800">{os.os_number ? `Nº ${os.os_number}` : `O.S. #${os.id.slice(0, 8)}`}</p>
-                                  <p className="text-xs text-gray-500">{new Date(os.created_at).toLocaleDateString('pt-BR')}</p>
+                                   <p className="text-xs text-gray-500">{parseLocalDate(os.sale_date || os.created_at?.split('T')[0]).toLocaleDateString('pt-BR')}</p>
                                 </div>
                                 <div className="flex items-center gap-2">
                                   <p className="text-sm font-bold text-blue-600">{formatCurrency(Number(os.total_value))}</p>
@@ -553,6 +606,7 @@ export default function CustomersPage() {
             {searchQuery ? 'Nenhum cliente encontrado para esta busca.' : 'Nenhum cliente cadastrado.'}
           </div>
         )}
+      </div>
       </div>
     </div>
   );

@@ -95,3 +95,7 @@ UPDATE payment_methods SET fee_by_installment = '{"1":1.99}'::jsonb WHERE name =
 UPDATE payment_methods SET
   fee_by_installment = '{"1":2.99,"2":3.49,"3":3.99,"4":4.49,"5":4.99,"6":5.49,"7":5.99,"8":6.49,"9":6.99,"10":7.49,"11":7.99,"12":8.49}'::jsonb
 WHERE name = 'Cartão de Crédito' AND fee_by_installment IS NULL;
+
+-- 4. Adicionar coluna sale_date para registrar a data real da venda (independente de created_at)
+ALTER TABLE service_orders
+ADD COLUMN IF NOT EXISTS sale_date DATE;

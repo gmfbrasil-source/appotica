@@ -3,10 +3,17 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { formatCurrency } from '@/lib/format';
 import { Plus, ArrowUpCircle, ArrowDownCircle, Calendar, Trash2, Search, Check, AlertCircle, CheckCircle, Printer, X, FileText } from 'lucide-react';
+import SidebarMenu from '@/components/SidebarMenu';
 
 function getLocalDate(date?: Date): string {
   const d = date || new Date();
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
+function parseLocalDate(dateStr: string): Date {
+  if (!dateStr) return new Date();
+  const parts = dateStr.split('T')[0].split('-');
+  return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
 }
 
 export default function FinancePage() {
@@ -23,7 +30,7 @@ export default function FinancePage() {
     type: 'Income',
     description: '',
     amount: '',
-    due_date: new Date().toISOString().split('T')[0],
+    due_date: getLocalDate(),
     status: 'Pending'
   });
 
@@ -44,6 +51,15 @@ export default function FinancePage() {
   const [showSuggestions, setShowSuggestions] = useState(false);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const typeParam = params.get('type');
+    const statusParam = params.get('status');
+    const dateStartParam = params.get('dateStart');
+    const dateEndParam = params.get('dateEnd');
+    if (typeParam === 'Income' || typeParam === 'Expense') setFilterType(typeParam);
+    if (statusParam === 'Pending' || statusParam === 'Paid') setFilterStatus(statusParam);
+    if (dateStartParam) setFilterDateStart(dateStartParam);
+    if (dateEndParam) setFilterDateEnd(dateEndParam);
     fetchRecords();
     fetchCustomers();
   }, []);
@@ -52,7 +68,7 @@ export default function FinancePage() {
     setLoading(true);
     const { data, error } = await supabase
       .from('financial_records')
-      .select('*, customers(name, cnpj)')
+      .select('*, customers(name, cnpj), service_orders(os_number)')
       .order('due_date', { ascending: true });
     
     if (!error) setRecords(data || []);
@@ -192,7 +208,7 @@ export default function FinancePage() {
       type: 'Income',
       description: '',
       amount: '',
-      due_date: new Date().toISOString().split('T')[0],
+      due_date: getLocalDate(),
       status: 'Pending'
     });
     setSupplierSearch('');
@@ -244,7 +260,7 @@ export default function FinancePage() {
     const w = window.open('', '_blank');
     if (!w) return;
 
-    const periodo = `${filterDateStart ? new Date(filterDateStart).toLocaleDateString('pt-BR') : 'Início'} até ${filterDateEnd ? new Date(filterDateEnd).toLocaleDateString('pt-BR') : 'Hoje'}`;
+    const periodo = `${filterDateStart ? parseLocalDate(filterDateStart).toLocaleDateString('pt-BR') : 'Início'} até ${filterDateEnd ? parseLocalDate(filterDateEnd).toLocaleDateString('pt-BR') : 'Hoje'}`;
     const incomePending = filteredRecords.filter(r => r.type === 'Income' && r.status === 'Pending');
     const incomePaid = filteredRecords.filter(r => r.type === 'Income' && r.status === 'Paid');
     const expensePending = filteredRecords.filter(r => r.type === 'Expense' && r.status === 'Pending');
@@ -259,7 +275,7 @@ export default function FinancePage() {
       const statusCor = r.status === 'Paid' ? (r.type === 'Income' ? '#16a34a' : '#dc2626') : '#ea580c';
       return `<tr>
         <td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:11px;color:#333">${r.description}</td>
-        <td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:11px;color:#666">${new Date(r.due_date).toLocaleDateString('pt-BR')}</td>
+        <td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:11px;color:#666">${parseLocalDate(r.due_date).toLocaleDateString('pt-BR')}</td>
         <td style="padding:6px 8px;border-bottom:1px solid #eee;font-size:11px;color:#666">${r.customers?.name || '-'}</td>
         <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:right;font-weight:bold;color:${cor};font-size:12px">R$ ${r.amount.toFixed(2).replace('.', ',')}</td>
         <td style="padding:6px 8px;border-bottom:1px solid #eee;text-align:center;font-size:10px;color:${statusCor};font-weight:bold">${statusLabel}</td>
@@ -350,25 +366,80 @@ export default function FinancePage() {
   }
 
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-gray-800">Financeiro</h1>
-        <button 
-          onClick={() => { resetForm(); setShowForm(true); }}
-          className="bg-blue-600 text-white p-2 rounded-full shadow-lg hover:bg-blue-700 transition-colors"
-        >
-          <Plus size={24} />
-        </button>
+    <div className="min-h-screen bg-gray-50/50">
+      <div className="max-w-7xl mx-auto p-4 md:p-6 lg:p-8 pb-24">
+
+      <SidebarMenu />
+
+      {/* HEADER ESCURO */}
+      <div className="bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 rounded-3xl ml-14 md:ml-0 p-5 md:p-6 mb-6 text-white">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-3">
+            <div>
+              <p className="text-gray-400 text-xs font-medium uppercase tracking-wider mb-1">Financeiro</p>
+              <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">Contas a Pagar e Receber</h1>
+            </div>
+          </div>
+          <button
+            onClick={() => { resetForm(); setShowForm(true); }}
+            className="bg-white text-gray-900 px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-gray-100 transition-colors flex items-center gap-2 shadow-lg shadow-white/10"
+          >
+            <Plus size={18} /> Novo Lançamento
+          </button>
+        </div>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 mb-8">
-        <div className="bg-green-50 p-4 rounded-2xl border border-green-100">
-          <p className="text-green-600 text-xs font-medium mb-1">A Receber</p>
-          <p className="text-xl font-bold text-green-700">{formatCurrency(totalReceivable)}</p>
+      {/* CARDS RESUMO */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+        <div className="bg-white p-4 md:p-5 rounded-2xl border border-gray-100 shadow-sm">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="p-1.5 bg-green-50 rounded-lg"><ArrowUpCircle size={14} className="text-green-600" /></div>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">A Receber</p>
+          </div>
+          <p className="text-xl md:text-2xl font-black text-green-600 mb-1">{formatCurrency(totalReceivable)}</p>
+          <p className="text-[10px] text-gray-400">Recebimentos pendentes</p>
         </div>
-        <div className="bg-red-50 p-4 rounded-2xl border border-red-100">
-          <p className="text-red-600 text-xs font-medium mb-1">A Pagar</p>
-          <p className="text-xl font-bold text-red-700">{formatCurrency(totalPayable)}</p>
+        <div className="bg-white p-4 md:p-5 rounded-2xl border border-gray-100 shadow-sm">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="p-1.5 bg-red-50 rounded-lg"><ArrowDownCircle size={14} className="text-red-600" /></div>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">A Pagar</p>
+          </div>
+          <p className="text-xl md:text-2xl font-black text-red-600 mb-1">{formatCurrency(totalPayable)}</p>
+          <p className="text-[10px] text-gray-400">Despesas pendentes</p>
+        </div>
+        <div className="bg-white p-4 md:p-5 rounded-2xl border border-gray-100 shadow-sm">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="p-1.5 bg-blue-50 rounded-lg"><ArrowUpCircle size={14} className="text-blue-600" /></div>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">Receitas Filtradas</p>
+          </div>
+          <p className="text-xl md:text-2xl font-black text-blue-600 mb-1">{formatCurrency(filteredIncome)}</p>
+          <p className="text-[10px] text-gray-400">Período selecionado</p>
+        </div>
+        <div className="bg-white p-4 md:p-5 rounded-2xl border border-gray-100 shadow-sm">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="p-1.5 bg-amber-50 rounded-lg"><ArrowDownCircle size={14} className="text-amber-600" /></div>
+            <p className="text-[11px] font-bold uppercase tracking-wider text-gray-400">Despesas Filtradas</p>
+          </div>
+          <p className="text-xl md:text-2xl font-black text-amber-600 mb-1">{formatCurrency(filteredExpense)}</p>
+          <p className="text-[10px] text-gray-400">Período selecionado</p>
+        </div>
+      </div>
+
+      {/* SALDO DOS FILTROS */}
+      <div className={`p-4 rounded-2xl mb-6 flex items-center justify-between border ${
+        filteredBalance >= 0
+          ? 'bg-gradient-to-r from-green-50 to-emerald-50 border-green-200'
+          : 'bg-gradient-to-r from-red-50 to-rose-50 border-red-200'
+      }`}>
+        <div>
+          <p className="text-[11px] font-bold uppercase tracking-wide text-gray-500">Saldo dos Filtros</p>
+          <p className={`text-xl font-black ${filteredBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+            {formatCurrency(filteredBalance)}
+          </p>
+        </div>
+        <div className="text-right text-[11px] leading-relaxed text-gray-500">
+          <p>Receitas <span className="font-bold text-green-600">{formatCurrency(filteredIncome)}</span></p>
+          <p>Despesas <span className="font-bold text-red-600">{formatCurrency(filteredExpense)}</span></p>
         </div>
       </div>
 
@@ -562,112 +633,90 @@ export default function FinancePage() {
         </div>
       )}
 
-      {/* Barra de Busca */}
-      <div className="relative mb-4">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-        <input
-          type="text"
-          placeholder="Buscar por descrição ou fornecedor..."
-          className="w-full pl-10 p-2.5 bg-gray-100 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-gray-950 text-sm"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        />
-      </div>
-
-      {/* Filtros por tipo e status */}
-      <div className="flex gap-2 mb-4 overflow-x-auto pb-1">
-        <div className="flex bg-gray-100 rounded-lg p-0.5">
-          {(['all', 'Income', 'Expense'] as const).map((t) => (
-            <button
-              key={t}
-              onClick={() => setFilterType(t)}
-              className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all whitespace-nowrap ${
-                filterType === t
-                  ? t === 'Income' ? 'bg-green-500 text-white'
-                    : t === 'Expense' ? 'bg-red-500 text-white'
-                    : 'bg-white text-gray-800 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              {t === 'all' ? 'Todos' : t === 'Income' ? 'Receitas' : 'Despesas'}
-            </button>
-          ))}
-        </div>
-        <div className="flex bg-gray-100 rounded-lg p-0.5">
-          {(['all', 'Pending', 'Paid'] as const).map((s) => (
-            <button
-              key={s}
-              onClick={() => setFilterStatus(s)}
-              className={`px-3 py-1.5 text-xs font-bold rounded-md transition-all whitespace-nowrap ${
-                filterStatus === s
-                  ? s === 'Paid' ? 'bg-blue-500 text-white'
-                    : s === 'Pending' ? 'bg-orange-500 text-white'
-                    : 'bg-white text-gray-800 shadow-sm'
-                  : 'text-gray-500 hover:text-gray-700'
-              }`}
-            >
-              {s === 'all' ? 'Todos' : s === 'Paid' ? 'Pagos' : 'Pendentes'}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Filtro por período */}
-      <div className="flex flex-wrap items-center gap-2 mb-4">
-        <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1.5">
-          <Calendar size={16} className="text-gray-500 ml-1" />
+      {/* FILTROS */}
+      <div className="bg-white p-4 md:p-5 rounded-3xl border border-gray-100 shadow-sm mb-6">
+        <div className="relative mb-4">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
           <input
-            type="date"
-            value={filterDateStart}
-            onChange={(e) => setFilterDateStart(e.target.value)}
-            className="p-1.5 bg-white border border-gray-200 rounded-lg text-xs text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none"
-            title="Data início"
-          />
-          <span className="text-xs text-gray-500">até</span>
-          <input
-            type="date"
-            value={filterDateEnd}
-            onChange={(e) => setFilterDateEnd(e.target.value)}
-            className="p-1.5 bg-white border border-gray-200 rounded-lg text-xs text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none"
-            title="Data fim"
+            type="text"
+            placeholder="Buscar por descrição ou fornecedor..."
+            className="w-full pl-10 p-3 bg-gray-50 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none text-gray-950 text-sm"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
-        {(filterDateStart || filterDateEnd) && (
+
+        <div className="flex flex-wrap gap-3 mb-4">
+          <div className="flex bg-gray-100 rounded-xl p-0.5">
+            {(['all', 'Income', 'Expense'] as const).map((t) => (
+              <button
+                key={t}
+                onClick={() => setFilterType(t)}
+                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all whitespace-nowrap ${
+                  filterType === t
+                    ? t === 'Income' ? 'bg-green-500 text-white shadow-sm'
+                      : t === 'Expense' ? 'bg-red-500 text-white shadow-sm'
+                      : 'bg-white text-gray-800 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                {t === 'all' ? 'Todos' : t === 'Income' ? 'Receitas' : 'Despesas'}
+              </button>
+            ))}
+          </div>
+          <div className="flex bg-gray-100 rounded-xl p-0.5">
+            {(['all', 'Pending', 'Paid'] as const).map((s) => (
+              <button
+                key={s}
+                onClick={() => setFilterStatus(s)}
+                className={`px-3 py-1.5 text-xs font-bold rounded-lg transition-all whitespace-nowrap ${
+                  filterStatus === s
+                    ? s === 'Paid' ? 'bg-blue-500 text-white shadow-sm'
+                      : s === 'Pending' ? 'bg-orange-500 text-white shadow-sm'
+                      : 'bg-white text-gray-800 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                {s === 'all' ? 'Todos' : s === 'Paid' ? 'Pagos' : 'Pendentes'}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex items-center gap-2 bg-gray-50 rounded-xl p-2 border border-gray-200">
+            <Calendar size={16} className="text-gray-400" />
+            <input
+              type="date"
+              value={filterDateStart}
+              onChange={(e) => setFilterDateStart(e.target.value)}
+              className="p-1.5 bg-white border border-gray-200 rounded-lg text-xs text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none"
+              title="Data início"
+            />
+            <span className="text-xs text-gray-400">até</span>
+            <input
+              type="date"
+              value={filterDateEnd}
+              onChange={(e) => setFilterDateEnd(e.target.value)}
+              className="p-1.5 bg-white border border-gray-200 rounded-lg text-xs text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none"
+              title="Data fim"
+            />
+          </div>
+          {(filterDateStart || filterDateEnd) && (
+            <button
+              onClick={() => { setFilterDateStart(''); setFilterDateEnd(''); }}
+              className="text-xs text-blue-600 font-medium hover:underline"
+            >
+              Limpar datas
+            </button>
+          )}
           <button
-            onClick={() => { setFilterDateStart(''); setFilterDateEnd(''); }}
-            className="text-xs text-blue-600 font-medium hover:underline"
+            onClick={() => setShowReportModal(true)}
+            disabled={filteredRecords.length === 0}
+            className="ml-auto flex items-center gap-1.5 px-4 py-2.5 bg-gray-900 text-white text-xs font-bold rounded-xl hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
           >
-            Limpar datas
+            <FileText size={14} /> Gerar Relatório
           </button>
-        )}
-        <button
-          onClick={() => setShowReportModal(true)}
-          disabled={filteredRecords.length === 0}
-          className="ml-auto flex items-center gap-1.5 px-3 py-2 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <FileText size={14} /> Gerar Relatório
-        </button>
-      </div>
-
-      {/* Saldo baseado nos filtros */}
-      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-4 mb-4 border border-blue-100">
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div className="flex gap-5">
-            <div>
-              <p className="text-xs text-green-600 font-medium">Receitas Filtradas</p>
-              <p className="text-lg font-bold text-green-600">{formatCurrency(filteredIncome)}</p>
-            </div>
-            <div>
-              <p className="text-xs text-red-600 font-medium">Despesas Filtradas</p>
-              <p className="text-lg font-bold text-red-600">{formatCurrency(filteredExpense)}</p>
-            </div>
-          </div>
-          <div className="text-right">
-            <p className="text-xs text-blue-600 font-medium uppercase">Saldo dos Filtros</p>
-            <p className={`text-2xl font-black ${filteredBalance >= 0 ? 'text-blue-700' : 'text-red-700'}`}>
-              {filteredBalance >= 0 ? '+' : ''} {formatCurrency(filteredBalance)}
-            </p>
-          </div>
         </div>
       </div>
 
@@ -676,14 +725,17 @@ export default function FinancePage() {
           <div className="text-center py-10 text-gray-500">Carregando financeiro...</div>
         ) : (
           filteredRecords.map((record: any) => (
-            <div key={record.id} className="flex items-center p-4 bg-white rounded-xl border border-gray-100 shadow-sm relative group">
-              <div className={`p-2 rounded-full mr-4 ${record.type === 'Income' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
+            <div key={record.id} className="flex items-center p-4 bg-white rounded-2xl border border-gray-100 shadow-sm relative group hover:shadow-md transition-all">
+              <div className={`p-2 rounded-xl mr-4 ${record.type === 'Income' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
                 {record.type === 'Income' ? <ArrowUpCircle size={20} /> : <ArrowDownCircle size={20} />}
               </div>
               
               <div className="flex-1">
                 <p className="font-semibold text-gray-800">
                   {record.description}
+                  {record.service_orders?.os_number && (
+                    <span className="ml-2 text-[10px] bg-gray-100 text-gray-600 font-bold px-1.5 py-0.5 rounded">OS #{record.service_orders.os_number}</span>
+                  )}
                   {record.description.match(/\(\d+\/\d+\)/) && (
                     <span className="ml-2 text-[10px] bg-blue-100 text-blue-700 font-bold px-1.5 py-0.5 rounded">Recorrente</span>
                   )}
@@ -698,7 +750,7 @@ export default function FinancePage() {
 
                 <div className="flex items-center text-xs text-gray-500 mt-1">
                   <Calendar size={12} className="mr-1" />
-                  {new Date(record.due_date).toLocaleDateString('pt-BR')}
+                  {parseLocalDate(record.due_date).toLocaleDateString('pt-BR')}
                 </div>
               </div>
 
@@ -762,9 +814,9 @@ export default function FinancePage() {
                 <div>
                   <span className="text-gray-500">Período: </span>
                   <span className="font-bold">
-                    {filterDateStart ? new Date(filterDateStart).toLocaleDateString('pt-BR') : 'Início'} 
+                    {filterDateStart ? parseLocalDate(filterDateStart).toLocaleDateString('pt-BR') : 'Início'} 
                     {' até '} 
-                    {filterDateEnd ? new Date(filterDateEnd).toLocaleDateString('pt-BR') : 'Hoje'}
+                    {filterDateEnd ? parseLocalDate(filterDateEnd).toLocaleDateString('pt-BR') : 'Hoje'}
                   </span>
                 </div>
                 <span className="text-xs text-gray-400">{filteredRecords.length} registro(s)</span>
@@ -907,9 +959,14 @@ export default function FinancePage() {
                         {filteredRecords.filter(r => r.type === 'Income').map((record: any) => (
                           <div key={record.id} className="flex items-center justify-between p-3 hover:bg-green-50 text-sm border-b border-green-50 last:border-0">
                             <div className="flex-1 min-w-0">
-                              <p className="font-semibold text-gray-800 truncate">{record.description}</p>
+                              <p className="font-semibold text-gray-800 truncate">
+                                {record.description}
+                                {record.service_orders?.os_number && (
+                                  <span className="ml-1 text-[10px] bg-gray-100 text-gray-600 font-bold px-1 py-0.5 rounded">OS #{record.service_orders.os_number}</span>
+                                )}
+                              </p>
                               <p className="text-[11px] text-gray-500">
-                                Venc: {new Date(record.due_date).toLocaleDateString('pt-BR')}
+                                Venc: {parseLocalDate(record.due_date).toLocaleDateString('pt-BR')}
                                 {record.customers?.name && ` | ${record.customers.name}`}
                               </p>
                             </div>
@@ -935,9 +992,14 @@ export default function FinancePage() {
                         {filteredRecords.filter(r => r.type === 'Expense').map((record: any) => (
                           <div key={record.id} className="flex items-center justify-between p-3 hover:bg-red-50 text-sm border-b border-red-50 last:border-0">
                             <div className="flex-1 min-w-0">
-                              <p className="font-semibold text-gray-800 truncate">{record.description}</p>
+                              <p className="font-semibold text-gray-800 truncate">
+                                {record.description}
+                                {record.service_orders?.os_number && (
+                                  <span className="ml-1 text-[10px] bg-gray-100 text-gray-600 font-bold px-1 py-0.5 rounded">OS #{record.service_orders.os_number}</span>
+                                )}
+                              </p>
                               <p className="text-[11px] text-gray-500">
-                                Venc: {new Date(record.due_date).toLocaleDateString('pt-BR')}
+                                Venc: {parseLocalDate(record.due_date).toLocaleDateString('pt-BR')}
                                 {record.customers?.name && ` | ${record.customers.name}`}
                               </p>
                             </div>
@@ -985,6 +1047,7 @@ export default function FinancePage() {
           .print-section { page-break-inside: avoid; }
         }
       `}</style>
+      </div>
     </div>
   );
 }

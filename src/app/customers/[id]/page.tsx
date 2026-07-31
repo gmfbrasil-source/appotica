@@ -5,6 +5,19 @@ import { formatCurrency, companyInfo } from '@/lib/format';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Phone, MessageCircle, Calendar, DollarSign, AlertCircle, ShoppingBag } from 'lucide-react';
 import Link from 'next/link';
+import SidebarMenu from '@/components/SidebarMenu';
+
+function parseLocalDate(dateStr: string): Date {
+  if (!dateStr) return new Date();
+  const parts = dateStr.split('T')[0].split('-');
+  return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+}
+
+function formatLocalDate(dateStr: string): string {
+  if (!dateStr) return '---';
+  const d = parseLocalDate(dateStr);
+  return d.toLocaleDateString('pt-BR');
+}
 
 export default function CustomerDetailsPage() {
   const params = useParams();
@@ -48,7 +61,7 @@ export default function CustomerDetailsPage() {
       // 3. Busca histórico financeiro
       const { data: finData, error: finErr } = await supabase
         .from('financial_records')
-        .select('*')
+        .select('*, service_orders(os_number)')
         .eq('customer_id', customerId)
         .order('due_date', { ascending: true });
 
@@ -64,19 +77,20 @@ export default function CustomerDetailsPage() {
   }
 
   const totalPaid = (financials || []).reduce((acc, curr) => {
-    return acc + (curr?.status === 'Paid' ? (Number(curr?.amount) || 0) : 0);
+    return acc + (curr?.status === 'Paid' && curr?.type === 'Income' ? (Number(curr?.amount) || 0) : 0);
   }, 0);
 
   const totalPending = (financials || []).reduce((acc, curr) => {
-    return acc + (curr?.status === 'Pending' ? (Number(curr?.amount) || 0) : 0);
+    return acc + (curr?.status === 'Pending' && curr?.type === 'Income' ? (Number(curr?.amount) || 0) : 0);
   }, 0);
 
   const overdueRecords = (financials || []).filter(f => {
     if (!f || !f.due_date) return false;
     try {
-      const dueDate = new Date(f.due_date);
+      const dueDate = parseLocalDate(f.due_date);
       const today = new Date();
-      return f.status === 'Pending' && dueDate < today;
+      today.setHours(0, 0, 0, 0);
+      return f.status === 'Pending' && f.type === 'Income' && dueDate < today;
     } catch {
       return false;
     }
@@ -113,47 +127,54 @@ export default function CustomerDetailsPage() {
   }
 
   return (
-    <div className="p-4 md:p-8 max-w-5xl mx-auto pb-24">
+    <div className="min-h-screen bg-gray-50/50">
+      <div className="max-w-5xl mx-auto p-4 md:p-6 lg:p-8 pb-24">
+
       <div className="flex items-center justify-between mb-6">
         <Link 
           href="/customers" 
-          className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition-colors font-medium"
+          className="flex items-center gap-2 text-gray-600 hover:text-blue-600 transition-colors font-medium text-sm"
         >
-          <ArrowLeft size={20} /> Voltar para Clientes
+          <ArrowLeft size={18} /> Voltar para Clientes
         </Link>
       </div>
 
-      {/* Cabeçalho do Cliente */}
-      <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div className="flex items-center gap-4">
-          <div className="bg-blue-100 p-4 rounded-2xl text-blue-600">
-            <User size={32} />
+      <SidebarMenu />
+
+      {/* HEADER DO CLIENTE */}
+      <div className="bg-gradient-to-r from-gray-900 via-gray-800 to-gray-900 rounded-3xl ml-14 md:ml-0 p-5 md:p-6 mb-6 text-white">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center text-xl font-black">
+              {customer.name?.[0] || '?'}
+            </div>
+            <div>
+              <p className="text-gray-400 text-xs font-medium uppercase tracking-wider mb-0.5">Cliente</p>
+              <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">{customer.name}</h1>
+              <p className="text-gray-400 text-sm">{customer.email || 'Sem e-mail cadastrado'}</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">{customer.name}</h1>
-            <p className="text-gray-500 text-sm">{customer.email || 'Sem e-mail cadastrado'}</p>
+          <div className="flex gap-2 items-center">
+            {customer?.phone && (
+              <button 
+                onClick={() => {
+                  const phone = String(customer.phone).replace(/\D/g, '');
+                  window.open(`https://wa.me/${phone}`, '_blank');
+                }}
+                className="bg-green-500 text-white px-4 py-2 rounded-xl flex items-center gap-2 hover:bg-green-600 transition-all font-bold text-sm shadow-sm"
+              >
+                <MessageCircle size={16} /> WhatsApp
+              </button>
+            )}
+            {overdueRecords && overdueRecords.length > 0 && (
+              <button 
+                onClick={sendWhatsAppReminder}
+                className="bg-red-500 text-white px-4 py-2 rounded-xl flex items-center gap-2 hover:bg-red-600 transition-all font-bold text-sm shadow-sm"
+              >
+                <AlertCircle size={16} /> Cobrar
+              </button>
+            )}
           </div>
-        </div>
-        <div className="flex gap-3 w-full md:w-auto">
-          {customer?.phone && (
-            <button 
-              onClick={() => {
-                const phone = String(customer.phone).replace(/\D/g, '');
-                window.open(`https://wa.me/${phone}`, '_blank');
-              }}
-              className="flex-1 md:flex-none bg-green-500 text-white px-4 py-2 rounded-xl flex items-center justify-center gap-2 hover:bg-green-600 transition-all font-bold shadow-sm"
-            >
-              <MessageCircle size={18} /> WhatsApp
-            </button>
-          )}
-          {overdueRecords && overdueRecords.length > 0 && (
-            <button 
-              onClick={sendWhatsAppReminder}
-              className="flex-1 md:flex-none bg-red-500 text-white px-4 py-2 rounded-xl flex items-center justify-center gap-2 hover:bg-red-600 transition-all font-bold shadow-sm"
-            >
-              <AlertCircle size={18} /> Cobrar Atrasos
-            </button>
-          )}
         </div>
       </div>
 
@@ -162,7 +183,9 @@ export default function CustomerDetailsPage() {
         <div className="lg:col-span-1 space-y-6">
           {/* Dados Cadastrais */}
           <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm space-y-4">
-            <h2 className="text-lg font-bold text-gray-800 mb-4">Dados Cadastrais</h2>
+            <h2 className="text-sm font-bold text-gray-400 uppercase flex items-center gap-2">
+              <User size={16} /> Dados Cadastrais
+            </h2>
             <div className="space-y-3">
               <div>
                 <p className="text-xs text-gray-400 uppercase font-bold">CPF</p>
@@ -181,7 +204,9 @@ export default function CustomerDetailsPage() {
 
           {/* Resumo Financeiro */}
           <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm space-y-4">
-            <h2 className="text-lg font-bold text-gray-800 mb-4">Resumo Financeiro</h2>
+            <h2 className="text-sm font-bold text-gray-400 uppercase flex items-center gap-2">
+              <DollarSign size={16} /> Resumo Financeiro
+            </h2>
             <div className="grid grid-cols-1 gap-3">
               <div className="p-3 bg-green-50 rounded-2xl border border-green-100 flex justify-between items-center">
                 <span className="text-green-700 text-sm font-medium">Total Pago</span>
@@ -207,8 +232,8 @@ export default function CustomerDetailsPage() {
         <div className="lg:col-span-2 space-y-8">
           {/* Histórico de Compras */}
           <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
-            <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-              <ShoppingBag size={20} className="text-blue-600" /> Histórico de Compras
+            <h2 className="text-sm font-bold text-gray-400 uppercase flex items-center gap-2">
+              <ShoppingBag size={16} /> Histórico de Compras
             </h2>
             <div className="space-y-3">
               {orders.length > 0 ? orders.map((order) => (
@@ -223,7 +248,7 @@ export default function CustomerDetailsPage() {
                     </div>
                     <div>
                        <p className="font-bold text-gray-800">{order.os_number ? `Nº ${order.os_number}` : `O.S. #${order.id.slice(0,8)}`}</p>
-                      <p className="text-xs text-gray-500">{new Date(order.created_at).toLocaleDateString('pt-BR')}</p>
+                       <p className="text-xs text-gray-500">{formatLocalDate(order.sale_date || order.created_at?.split('T')[0])}</p>
                     </div>
                   </div>
                   <div className="text-right">
@@ -243,8 +268,8 @@ export default function CustomerDetailsPage() {
 
           {/* Detalhes Financeiros (Parcelas) */}
           <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm">
-            <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-              <DollarSign size={20} className="text-blue-600" /> Detalhes Financeiros
+            <h2 className="text-sm font-bold text-gray-400 uppercase flex items-center gap-2">
+              <DollarSign size={16} /> Detalhes Financeiros
             </h2>
             <div className="overflow-x-auto">
               <table className="w-full text-left text-sm">
@@ -259,8 +284,13 @@ export default function CustomerDetailsPage() {
                 <tbody className="divide-y divide-gray-50">
                   {financials.length > 0 ? financials.map((fin) => (
                     <tr key={fin.id} className="hover:bg-gray-50 transition-colors">
-                      <td className="py-3 px-2 font-medium text-gray-800">{fin.description}</td>
-                      <td className="py-3 px-2 text-gray-500">{fin?.due_date ? new Date(fin.due_date).toLocaleDateString('pt-BR') : '---'}</td>
+                      <td className="py-3 px-2 font-medium text-gray-800">
+                        {fin.description}
+                        {fin.service_orders?.os_number && (
+                          <span className="ml-2 text-[10px] bg-gray-100 text-gray-600 font-bold px-1.5 py-0.5 rounded">OS #{fin.service_orders.os_number}</span>
+                        )}
+                      </td>
+                      <td className="py-3 px-2 text-gray-500">{formatLocalDate(fin?.due_date)}</td>
                       <td className="py-3 px-2 font-bold">{formatCurrency(fin?.amount || 0)}</td>
                       <td className="py-3 px-2">
                         <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase ${
@@ -280,6 +310,7 @@ export default function CustomerDetailsPage() {
             </div>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

@@ -25,6 +25,12 @@ function getLocalDate(date?: Date): string {
   return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
 }
 
+// Parse "YYYY-MM-DD" em timezone local (evita que new Date("2026-06-01") interprete como UTC)
+function parseDateStr(dateStr: string): Date {
+  const parts = dateStr.split('-');
+  return new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+}
+
 function AccordionSection({ num, title, done, isOpen, canOpen, onToggle, children, summary }: {
   num: number;
   title: string;
@@ -121,8 +127,10 @@ export default function SalesPage() {
   const [payment, setPayment] = useState({
     method: '',
     downPayment: '',
+    entryStatus: 'Paid',
     installments: '1',
-    status: 'Paid'
+    status: 'Paid',
+    hasCardEntry: false,
   });
 
   // Seções do acordeão
@@ -142,22 +150,168 @@ export default function SalesPage() {
   const [createdOS, setCreatedOS] = useState<any>(null);
   const [showPrintModal, setShowPrintModal] = useState(false);
 
+  // Edição de venda existente
+  const [editOrderId, setEditOrderId] = useState<string | null>(null);
+  const [loadingEdit, setLoadingEdit] = useState(false);
+
+  async function loadForEdit(orderId: string, methods?: any[]) {
+    setLoadingEdit(true);
+    try {
+      const { data: os, error } = await supabase
+        .from('service_orders')
+        .select('*, customers(*)')
+        .eq('id', orderId)
+        .single();
+      if (error || !os) throw new Error('Ordem de serviço não encontrada.');
+      origSaleDateRef.current = os.sale_date || null;
+
+      // Parse notes (frame/lenses/observations are concatenated)
+      let frame = '', lenses = '', notes = '';
+      if (os.notes) {
+        const frameMatch = os.notes.match(/Armação: (.+?)(?:\n|$)/);
+        const lensesMatch = os.notes.match(/Lente: (.+?)(?:\n|$)/);
+        const notesMatch = os.notes.match(/Observações: (.+?)$/);
+        if (frameMatch) frame = frameMatch[1].trim();
+        if (lensesMatch) lenses = lensesMatch[1].trim();
+        if (notesMatch) notes = notesMatch[1].trim();
+        if (frameMatch && frame === 'Não informada') frame = '';
+        if (lensesMatch && lenses === 'Não informada') lenses = '';
+        if (notesMatch && notes === 'Nenhuma') notes = '';
+      }
+      if (frame === 'Não informada') frame = '';
+      if (lenses === 'Não informada') lenses = '';
+
+      // Set customer
+      if (os.customers) {
+        setSelectedCustomerId(os.customer_id);
+        setCustomerSearch(os.customers.name || '');
+      }
+
+      // Set sale details
+      setSaleDetails({
+        saleDate: os.sale_date || getLocalDate(new Date(os.created_at)),
+        frame,
+        lenses,
+        total_value: String(os.total_value || ''),
+        scheduled_date: os.scheduled_date || getLocalDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)),
+        notes,
+        frame_width: String(os.frame_width ?? ''),
+        bridge_rim: String(os.bridge_rim ?? ''),
+        major_angle: String(os.major_angle ?? ''),
+        dp_os: String(os.dp_os ?? ''),
+        altura: String(os.altura ?? '')
+      });
+
+      // Set OS number e opções
+      setOsNumber(os.os_number || '');
+      setGeraOS(true);
+      setEntregueAgora(os.status === 'Delivered');
+
+      // Fetch latest prescription for this customer
+      let hasPresc = false;
+      const { data: presc, error: prescErr } = await supabase
+        .from('prescriptions')
+        .select('*')
+        .eq('customer_id', os.customer_id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (presc && !prescErr) {
+        setPrescription({
+          oe_sphere: presc.oe_sphere != null ? String(presc.oe_sphere) : '',
+          oe_cylinder: presc.oe_cylinder != null ? String(presc.oe_cylinder) : '',
+          oe_axis: presc.oe_axis != null ? String(presc.oe_axis) : '',
+          od_sphere: presc.od_sphere != null ? String(presc.od_sphere) : '',
+          od_cylinder: presc.od_cylinder != null ? String(presc.od_cylinder) : '',
+          od_axis: presc.od_axis != null ? String(presc.od_axis) : '',
+          addition: presc.addition != null ? String(presc.addition) : '',
+          dp: presc.dp != null ? String(presc.dp) : '',
+          notes: presc.notes || ''
+        });
+        hasPresc = true;
+      }
+      setIsSunglasses(!hasPresc);
+
+      // Fetch financial records to restore payment data
+      const { data: fins } = await supabase
+        .from('financial_records')
+        .select('*')
+        .eq('order_id', orderId)
+        .order('due_date', { ascending: true });
+
+      if (fins && fins.length > 0) {
+        const incomeRecords = fins.filter((f: any) => f.type === 'Income');
+        const instRecords = incomeRecords.filter((f: any) => f.description.match(/- \d{2}\/\d{2}$/));
+        const entryRecord = incomeRecords.find((f: any) => f.description.includes('(Entrada)'));
+        const vistaRecord = incomeRecords.find((f: any) => f.description.includes('(À Vista)'));
+
+        // Find payment method by matching description with method names
+        const availMethods = methods || paymentMethods;
+        let matchedMethodId = '';
+        for (const m of availMethods) {
+          if (incomeRecords.some((f: any) => f.description.includes(m.name))) {
+            matchedMethodId = m.id;
+            break;
+          }
+        }
+
+        // Detect card payment (has fee records)
+        const hasFeeRecord = fins.some((f: any) => f.type === 'Expense' && f.description.startsWith('Taxa'));
+        // Detect entry+card combo: has both entry record and fee record
+        const hasCardEntry = hasFeeRecord && !!entryRecord && entryRecord.amount > 0;
+
+        const instCount = instRecords.length;
+        const entryAmount = entryRecord ? entryRecord.amount : 0;
+        const hasPending = fins.some((f: any) => f.status === 'Pending');
+
+        setPayment({
+          method: matchedMethodId || payment.method,
+          downPayment: entryAmount > 0 ? String(entryAmount) : '0',
+          entryStatus: entryRecord?.status || 'Paid',
+          installments: String(hasFeeRecord ? 1 : (instCount || 1)),
+          status: hasPending ? 'Pending' : 'Paid',
+          hasCardEntry,
+        });
+
+        // Set first due date from sale date (aligned with the edited sale date)
+        setFirstDueDate(os.sale_date || getLocalDate(new Date(os.created_at)));
+      } else {
+        setPayment(prev => ({ ...prev, method: (methods || paymentMethods)[0]?.id || '', hasCardEntry: false }));
+      }
+
+      setActiveSection(1);
+    } catch (err: any) {
+      alert('Erro ao carregar venda para edição: ' + err.message);
+    } finally {
+      setLoadingEdit(false);
+    }
+  }
+
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const edit = params.get('edit');
     fetchCustomers();
-    fetchPaymentMethods();
+    if (edit) {
+      setEditOrderId(edit);
+      fetchPaymentMethods().then(methods => loadForEdit(edit, methods));
+    } else {
+      fetchPaymentMethods();
+    }
   }, []);
 
-  async function fetchPaymentMethods() {
+  async function fetchPaymentMethods(): Promise<any[]> {
     const { data: profile } = await supabase.from('profiles').select('shop_id').single();
-    if (!profile?.shop_id) return;
+    if (!profile?.shop_id) return [];
     const { data, error } = await supabase.from('payment_methods').select('*').eq('shop_id', profile.shop_id).eq('active', true).order('name');
     if (error || !data || data.length === 0) {
       setPaymentMethodsError(true);
       setPaymentMethods([]);
-      return;
+      return [];
     }
     setPaymentMethods(data);
-    setPayment(prev => ({ ...prev, method: data[0].id }));
+    if (!editOrderId) setPayment(prev => ({ ...prev, method: data[0].id }));
+    return data;
   }
 
   const selectedMethod = paymentMethods.find(m => m.id === payment.method);
@@ -203,8 +357,8 @@ export default function SalesPage() {
         });
         const axisOD = parseInt(prescription.od_axis);
         const axisOE = parseInt(prescription.oe_axis);
-        if (isNaN(axisOD) || axisOD < 0 || axisOD > 180) warnings.push('O Eixo OD deve estar entre 0 e 180.');
-        if (isNaN(axisOE) || axisOE < 0 || axisOE > 180) warnings.push('O Eixo OE deve estar entre 0 e 180.');
+        if (prescription.od_cylinder && (isNaN(axisOD) || axisOD < 0 || axisOD > 180)) warnings.push('O Eixo OD deve estar entre 0 e 180.');
+        if (prescription.oe_cylinder && (isNaN(axisOE) || axisOE < 0 || axisOE > 180)) warnings.push('O Eixo OE deve estar entre 0 e 180.');
         const dp = parseFloat(prescription.dp);
         if (!isNaN(dp) && (dp < 40 || dp > 80)) warnings.push('A Distância Pupilar (DP) parece incomum (fora de 40-80mm).');
         if (warnings.length > 0) {
@@ -252,7 +406,13 @@ export default function SalesPage() {
       const totalVal = parseFloat(saleDetails.total_value);
       if (isNaN(totalVal)) throw new Error('Insira um valor total válido para a venda.');
 
-      // 4. Cadastrar Ordem de Serviço (O.S.) — só se geraOS estiver ativado
+      // Validação da data da venda
+      const saleDateObj = parseDateStr(saleDetails.saleDate);
+      if (isNaN(saleDateObj.getTime())) throw new Error('Data da venda inválida.');
+      const dateCheck = getLocalDate(saleDateObj);
+      if (dateCheck !== saleDetails.saleDate) throw new Error(`Data da venda inválida: ${saleDetails.saleDate} não existe (ex: 31/06 não é válido).`);
+
+      // 4. Cadastrar ou atualizar Ordem de Serviço (O.S.)
       let osData: any = null;
       if (geraOS) {
         const notesOS = `Armação: ${saleDetails.frame || 'Não informada'}\nLente: ${saleDetails.lenses || 'Não informada'}\nObservações: ${saleDetails.notes || 'Nenhuma'}`;
@@ -261,133 +421,205 @@ export default function SalesPage() {
           status: 'In_Laboratory',
           total_value: totalVal,
           scheduled_date: saleDetails.scheduled_date,
+          sale_date: saleDetails.saleDate,
           notes: notesOS,
-          frame_width: saleDetails.frame_width ? parseFloat(saleDetails.frame_width) : null,
+          frame_width: saleDetails.frame_width || null,
           bridge_rim: saleDetails.bridge_rim ? parseFloat(saleDetails.bridge_rim) : null,
           major_angle: saleDetails.major_angle ? parseFloat(saleDetails.major_angle) : null,
           dp_os: saleDetails.dp_os ? parseFloat(saleDetails.dp_os) : null,
           altura: saleDetails.altura ? parseFloat(saleDetails.altura) : null
         };
         if (osNumber.trim()) osPayload.os_number = osNumber.trim();
-        const { data: osResult, error: osErr } = await supabase
-          .from('service_orders')
-          .insert([osPayload])
-          .select('*, customers(name, phone, cpf)')
-          .single();
-        if (osErr) throw osErr;
-        osData = osResult;
+
+        if (editOrderId) {
+          const { data: osResult, error: osErr } = await supabase
+            .from('service_orders')
+            .update(osPayload)
+            .eq('id', editOrderId)
+            .select('*, customers(name, phone, cpf)')
+            .single();
+          if (osErr) {
+            // Se a coluna sale_date ainda não existir, tenta sem ela
+            if (osErr.message?.includes('sale_date')) {
+              delete osPayload.sale_date;
+              const { data: retry, error: retryErr } = await supabase
+                .from('service_orders')
+                .update(osPayload)
+                .eq('id', editOrderId)
+                .select('*, customers(name, phone, cpf)')
+                .single();
+              if (retryErr) throw retryErr;
+              osData = retry;
+            } else {
+              throw osErr;
+            }
+          } else {
+            osData = osResult;
+          }
+        } else {
+          const { data: osResult, error: osErr } = await supabase
+            .from('service_orders')
+            .insert([osPayload])
+            .select('*, customers(name, phone, cpf)')
+            .single();
+          if (osErr) {
+            if (osErr.message?.includes('sale_date')) {
+              delete osPayload.sale_date;
+              const { data: retry, error: retryErr } = await supabase
+                .from('service_orders')
+                .insert([osPayload])
+                .select('*, customers(name, phone, cpf)')
+                .single();
+              if (retryErr) throw retryErr;
+              osData = retry;
+            } else {
+              throw osErr;
+            }
+          } else {
+            osData = osResult;
+          }
+        }
       }
 
       // 5. Cadastrar lançamentos financeiros
       const financialInserts = [];
-       const hoje = new Date(saleDetails.saleDate);
+       const hoje = parseDateStr(saleDetails.saleDate);
        const hojeStr = getLocalDate(hoje);
+       // Se editando e saleDate mudou, ajusta firstDueDate pelo mesmo delta
+       let effectiveFirstDueDate = firstDueDate;
+       if (editOrderId && origSaleDateRef.current && origSaleDateRef.current !== saleDetails.saleDate) {
+         const oldDate = parseDateStr(origSaleDateRef.current);
+         const newDate = hoje;
+         const deltaMs = newDate.getTime() - oldDate.getTime();
+         const oldFirstDue = parseDateStr(firstDueDate);
+         const newFirstDue = new Date(oldFirstDue.getTime() + deltaMs);
+         effectiveFirstDueDate = getLocalDate(newFirstDue);
+       }
        const entrada = Math.min(parseFloat(payment.downPayment) || 0, totalVal);
        const restante = Math.round((totalVal - entrada) * 100) / 100;
        const instCount = Math.max(parseInt(payment.installments) || 0, 0);
-       const osRef = osData?.id?.slice(0, 8);
-       const descPrefix = osRef ? `Venda O.S. #${osRef}` : 'Venda';
+       const osPrefix = osData?.os_number ? `OS ${osData.os_number}` : 'Venda';
 
-       // Cartão: recebimento integral + taxa automática
-       if (selectedMethod?.is_card) {
-         const totalFinal = totalVal;
-         const instForFee = Math.max(parseInt(payment.installments) || 1, 1);
-         const feePerc = ((selectedMethod.fee_by_installment?.[instForFee] ?? selectedMethod.fee_percent) || 0) / 100;
-         const feeAmount = Math.round(totalFinal * feePerc * 100) / 100;
+        if (selectedMethod?.is_card) {
+          // Cartão: pode ser apenas cartão, ou entrada + cartão
+          const cardAmount = payment.hasCardEntry ? restante : totalVal;
+          const instForFee = Math.max(parseInt(payment.installments) || 1, 1);
+          const feePerc = ((selectedMethod.fee_by_installment?.[instForFee] ?? selectedMethod.fee_percent) || 0) / 100;
+          const feeAmount = Math.round(cardAmount * feePerc * 100) / 100;
 
-         financialInserts.push({
-           shop_id: shopId, type: 'Income',
-           description: `${descPrefix} (${selectedMethod.name})`,
-           amount: totalFinal,
-           due_date: hojeStr,
-           payment_date: hojeStr,
-           status: 'Paid',
-           order_id: osData?.id || null,
-           customer_id: finalCustomerId
-         });
+          // Entrada + Cartão: gera entrada separada
+          if (payment.hasCardEntry && entrada > 0) {
+            financialInserts.push({
+              shop_id: shopId, type: 'Income',
+               description: `${osPrefix} (Entrada)`,
+              amount: entrada,
+              due_date: hojeStr,
+              payment_date: payment.entryStatus === 'Paid' ? hojeStr : null,
+              status: payment.entryStatus,
+              order_id: osData?.id || null,
+              customer_id: finalCustomerId
+            });
+          }
 
-         if (feeAmount > 0) {
-           financialInserts.push({
-             shop_id: shopId, type: 'Expense',
-             description: `Taxa ${selectedMethod.name} - ${descPrefix}`,
-             amount: feeAmount,
-             due_date: hojeStr,
-             payment_date: hojeStr,
-             status: 'Paid',
-             order_id: osData?.id || null,
-             customer_id: finalCustomerId
-           });
-         }
-       } else {
-         // Demais métodos (Pix, Dinheiro, Boleto, Carnê)
-         // Entrada (só se > 0)
-         if (entrada > 0) {
-           const entryDue = instCount > 0 ? new Date(firstDueDate) : hoje;
-           financialInserts.push({
-             shop_id: shopId, type: 'Income',
-             description: `${descPrefix} (Entrada)`,
-             amount: entrada,
-             due_date: getLocalDate(entryDue),
-             payment_date: payment.status === 'Paid' ? hojeStr : null,
-             status: payment.status,
-             order_id: osData?.id || null,
-             customer_id: finalCustomerId
-           });
-         }
+          // Recebimento do cartão
+          financialInserts.push({
+            shop_id: shopId, type: 'Income',
+             description: `${osPrefix} (${selectedMethod.name})`,
+            amount: cardAmount,
+            due_date: hojeStr,
+            payment_date: hojeStr,
+            status: 'Paid',
+            order_id: osData?.id || null,
+            customer_id: finalCustomerId
+          });
 
-         // Parcelas
-         if (instCount > 0 && restante > 0) {
-           const firstDate = new Date(firstDueDate);
-           for (let i = 0; i < instCount; i++) {
-             const baseValor = restante / instCount;
-             let valorParcela = Math.floor(baseValor * 100) / 100;
-             if (i === instCount - 1) valorParcela = Math.round((restante - valorParcela * (instCount - 1)) * 100) / 100;
-             const due = new Date(firstDate);
-             due.setDate(due.getDate() + i * 30);
-             financialInserts.push({
-               shop_id: shopId, type: 'Income',
-               description: `${descPrefix} (Parc. ${i+1}/${instCount})`,
-               amount: valorParcela,
-               due_date: getLocalDate(due),
-               payment_date: null,
-               status: 'Pending',
-               order_id: osData?.id || null,
-               customer_id: finalCustomerId
-             });
-           }
-         }
+          if (feeAmount > 0) {
+            financialInserts.push({
+              shop_id: shopId, type: 'Expense',
+               description: `Taxa ${selectedMethod.name} - ${osPrefix}`,
+              amount: feeAmount,
+              due_date: hojeStr,
+              payment_date: hojeStr,
+              status: 'Paid',
+              order_id: osData?.id || null,
+              customer_id: finalCustomerId
+            });
+          }
+        } else {
+          // Demais métodos (Pix, Dinheiro, Boleto, Carnê)
+          // Entrada (só se > 0)
+          if (entrada > 0) {
+            const entryDue = instCount > 0 ? parseDateStr(effectiveFirstDueDate) : hoje;
+            financialInserts.push({
+              shop_id: shopId, type: 'Income',
+               description: `${osPrefix} (Entrada)`,
+              amount: entrada,
+              due_date: getLocalDate(entryDue),
+              payment_date: payment.entryStatus === 'Paid' ? hojeStr : null,
+              status: payment.entryStatus,
+              order_id: osData?.id || null,
+              customer_id: finalCustomerId
+            });
+          }
 
-         // À vista (sem entrada nem parcelas)
-         if (entrada === 0 && instCount === 0) {
-           financialInserts.push({
-             shop_id: shopId, type: 'Income',
-             description: `${descPrefix} (À Vista)`,
-             amount: totalVal,
-             due_date: hojeStr,
-             payment_date: payment.status === 'Paid' ? hojeStr : null,
-             status: payment.status,
-             order_id: osData?.id || null,
-             customer_id: finalCustomerId
-           });
-         }
+          // Parcelas
+          if (instCount > 0 && restante > 0) {
+            const firstDate = parseDateStr(effectiveFirstDueDate);
+            for (let i = 0; i < instCount; i++) {
+              const baseValor = restante / instCount;
+              let valorParcela = Math.floor(baseValor * 100) / 100;
+              if (i === instCount - 1) valorParcela = Math.round((restante - valorParcela * (instCount - 1)) * 100) / 100;
+              const due = parseDateStr(effectiveFirstDueDate);
+              due.setDate(due.getDate() + i * 30);
+              financialInserts.push({
+                shop_id: shopId, type: 'Income',
+                 description: `${osPrefix} - ${String(i+1).padStart(2, '0')}/${String(instCount).padStart(2, '0')}`,
+                amount: valorParcela,
+                due_date: getLocalDate(due),
+                payment_date: null,
+                status: 'Pending',
+                order_id: osData?.id || null,
+                customer_id: finalCustomerId
+              });
+            }
+          }
+
+          // À vista (sem entrada nem parcelas)
+          if (entrada === 0 && instCount === 0) {
+            financialInserts.push({
+              shop_id: shopId, type: 'Income',
+               description: `${osPrefix} (À Vista)`,
+              amount: totalVal,
+              due_date: hojeStr,
+              payment_date: payment.status === 'Paid' ? hojeStr : null,
+              status: payment.status,
+              order_id: osData?.id || null,
+              customer_id: finalCustomerId
+            });
+          }
+        }
+
+
+
+       // Se editando, remove lançamentos financeiros antigos e recria
+       if (editOrderId) {
+         await supabase.from('financial_records').delete().eq('order_id', editOrderId);
        }
 
-
-
-      const { error: finErr } = await supabase.from('financial_records').insert(financialInserts);
-      if (finErr) throw finErr;
+       const { error: finErr } = await supabase.from('financial_records').insert(financialInserts);
+       if (finErr) throw finErr;
 
       const clientName = isNewCustomer ? newCustomer.name : (customers.find(c => c.id === finalCustomerId)?.name || 'Cliente');
       const clientPhone = isNewCustomer ? newCustomer.phone : (customers.find(c => c.id === finalCustomerId)?.phone || '');
       // Monta dados das parcelas para o carnê
       const installmentData: { num: number; due: string; amount: number }[] = [];
       if (!selectedMethod?.is_card && instCount > 0 && restante > 0) {
-        const firstDate = new Date(firstDueDate);
+        const firstDate = parseDateStr(effectiveFirstDueDate);
         for (let i = 0; i < instCount; i++) {
           const baseValor = restante / instCount;
           let valorParcela = Math.floor(baseValor * 100) / 100;
           if (i === instCount - 1) valorParcela = Math.round((restante - valorParcela * (instCount - 1)) * 100) / 100;
-          const due = new Date(firstDate);
+          const due = parseDateStr(effectiveFirstDueDate);
           due.setDate(due.getDate() + i * 30);
           installmentData.push({ num: i + 1, due: due.toLocaleDateString('pt-BR'), amount: valorParcela });
         }
@@ -414,6 +646,11 @@ export default function SalesPage() {
         notes: saleDetails.notes
       });
 
+      if (editOrderId) {
+        alert('Venda atualizada com sucesso!');
+        window.location.href = '/os';
+        return;
+      }
       setShowPrintModal(true);
       resetForm();
       fetchCustomers();
@@ -447,7 +684,7 @@ export default function SalesPage() {
         dp_os: '',
         altura: ''
       });
-    setPayment({ method: paymentMethods[0]?.id || '', downPayment: '', installments: '1', status: 'Paid' });
+    setPayment({ method: paymentMethods[0]?.id || '', downPayment: '', entryStatus: 'Paid', installments: '1', status: 'Paid', hasCardEntry: false });
     setIsSunglasses(false);
     setOsNumber('');
     setGeraOS(true);
@@ -457,6 +694,7 @@ export default function SalesPage() {
 
   const printAreaRef = useRef<HTMLDivElement>(null);
   const carneRef = useRef<HTMLDivElement>(null);
+  const origSaleDateRef = useRef<string | null>(null);
 
   function handlePrint() {
     const printContent = printAreaRef.current?.innerHTML;
@@ -473,8 +711,13 @@ export default function SalesPage() {
   return (
     <div className="p-4 md:p-8 max-w-4xl mx-auto pb-24">
       <header className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-900">Nova Venda</h1>
-        <p className="text-sm text-gray-500">Preencha cada etapa para criar a venda completa.</p>
+        <h1 className="text-2xl font-bold text-gray-900">{editOrderId ? 'Editando Venda' : 'Nova Venda'}</h1>
+        <p className="text-sm text-gray-500">{editOrderId ? 'Altere os dados necessários e salve as alterações.' : 'Preencha cada etapa para criar a venda completa.'}</p>
+        {loadingEdit && (
+          <div className="mt-3 flex items-center gap-2 text-sm text-blue-600 bg-blue-50 p-3 rounded-xl">
+            <Loader2 className="animate-spin" size={16} /> Carregando dados da venda...
+          </div>
+        )}
       </header>
 
       <form onSubmit={handleCreateSale} className="space-y-3">
@@ -612,16 +855,19 @@ export default function SalesPage() {
                   <h3 className="font-bold text-xs text-gray-700 border-b pb-1 text-center sm:text-left">Olho Direito (OD)</h3>
                   <div className="grid grid-cols-3 gap-1.5">
                     <div>
-                      <label className="block text-[10px] font-medium text-gray-500 uppercase">Esférico</label>
-                      <input type="text" placeholder="-2.00" className="w-full p-2 bg-white border border-gray-200 rounded-lg text-sm text-center text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={prescription.od_sphere} onChange={e => setPrescription({...prescription, od_sphere: e.target.value})} />
+                      <label className="block text-[10px] font-medium text-gray-500 uppercase">Esferico</label>
+                       <input type="text" inputMode="decimal" placeholder="-2.00" className="w-full p-2 bg-white border border-gray-200 rounded-lg text-sm text-center text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={prescription.od_sphere} onChange={e => setPrescription({...prescription, od_sphere: e.target.value})} />
                     </div>
                     <div>
-                      <label className="block text-[10px] font-medium text-gray-500 uppercase">Cilíndrico</label>
-                      <input type="text" placeholder="-0.50" className="w-full p-2 bg-white border border-gray-200 rounded-lg text-sm text-center text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={prescription.od_cylinder} onChange={e => setPrescription({...prescription, od_cylinder: e.target.value})} />
+                      <label className="block text-[10px] font-medium text-gray-500 uppercase">Cilindrico</label>
+                      <input type="text" inputMode="decimal" placeholder="-0.50" className="w-full p-2 bg-white border border-gray-200 rounded-lg text-sm text-center text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={prescription.od_cylinder} onChange={e => setPrescription({...prescription, od_cylinder: e.target.value})} />
                     </div>
                     <div>
-                      <label className="block text-[10px] font-medium text-gray-500 uppercase">Eixo (°)</label>
-                      <input type="text" placeholder="180" className="w-full p-2 bg-white border border-gray-200 rounded-lg text-sm text-center text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={prescription.od_axis} onChange={e => setPrescription({...prescription, od_axis: e.target.value})} />
+                      <label className="block text-[10px] font-medium text-gray-500 uppercase">Eixo (0-180)</label>
+                      <input type="text" inputMode="numeric" maxLength={3} placeholder="180" className="w-full p-2 bg-white border border-gray-200 rounded-lg text-sm text-center text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={prescription.od_axis} onChange={e => {
+                        const v = e.target.value.replace(/\D/g, '').slice(0, 3);
+                        if (v === '' || (parseInt(v) >= 0 && parseInt(v) <= 180)) setPrescription({...prescription, od_axis: v});
+                      }} />
                     </div>
                   </div>
                 </div>
@@ -629,28 +875,31 @@ export default function SalesPage() {
                   <h3 className="font-bold text-xs text-gray-700 border-b pb-1 text-center sm:text-left">Olho Esquerdo (OE)</h3>
                   <div className="grid grid-cols-3 gap-1.5">
                     <div>
-                      <label className="block text-[10px] font-medium text-gray-500 uppercase">Esférico</label>
-                      <input type="text" placeholder="-1.75" className="w-full p-2 bg-white border border-gray-200 rounded-lg text-sm text-center text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={prescription.oe_sphere} onChange={e => setPrescription({...prescription, oe_sphere: e.target.value})} />
+                      <label className="block text-[10px] font-medium text-gray-500 uppercase">Esferico</label>
+                      <input type="text" inputMode="decimal" placeholder="-1.75" className="w-full p-2 bg-white border border-gray-200 rounded-lg text-sm text-center text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={prescription.oe_sphere} onChange={e => setPrescription({...prescription, oe_sphere: e.target.value})} />
                     </div>
                     <div>
-                      <label className="block text-[10px] font-medium text-gray-500 uppercase">Cilíndrico</label>
-                      <input type="text" placeholder="-0.75" className="w-full p-2 bg-white border border-gray-200 rounded-lg text-sm text-center text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={prescription.oe_cylinder} onChange={e => setPrescription({...prescription, oe_cylinder: e.target.value})} />
+                      <label className="block text-[10px] font-medium text-gray-500 uppercase">Cilindrico</label>
+                      <input type="text" inputMode="decimal" placeholder="-0.75" className="w-full p-2 bg-white border border-gray-200 rounded-lg text-sm text-center text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={prescription.oe_cylinder} onChange={e => setPrescription({...prescription, oe_cylinder: e.target.value})} />
                     </div>
                     <div>
-                      <label className="block text-[10px] font-medium text-gray-500 uppercase">Eixo (°)</label>
-                      <input type="text" placeholder="90" className="w-full p-2 bg-white border border-gray-200 rounded-lg text-sm text-center text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={prescription.oe_axis} onChange={e => setPrescription({...prescription, oe_axis: e.target.value})} />
+                      <label className="block text-[10px] font-medium text-gray-500 uppercase">Eixo (0-180)</label>
+                      <input type="text" inputMode="numeric" maxLength={3} placeholder="90" className="w-full p-2 bg-white border border-gray-200 rounded-lg text-sm text-center text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={prescription.oe_axis} onChange={e => {
+                        const v = e.target.value.replace(/\D/g, '').slice(0, 3);
+                        if (v === '' || (parseInt(v) >= 0 && parseInt(v) <= 180)) setPrescription({...prescription, oe_axis: v});
+                      }} />
                     </div>
                   </div>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3 mt-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Adição</label>
-                  <input type="text" placeholder="+2.00" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={prescription.addition} onChange={(e) => setPrescription({...prescription, addition: e.target.value})} />
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Adicao</label>
+                  <input type="text" inputMode="decimal" placeholder="+2.00" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={prescription.addition} onChange={(e) => setPrescription({...prescription, addition: e.target.value})} />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">D.P.</label>
-                  <input type="text" placeholder="62" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={prescription.dp} onChange={(e) => setPrescription({...prescription, dp: e.target.value})} />
+                  <input type="text" inputMode="decimal" placeholder="62" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={prescription.dp} onChange={(e) => setPrescription({...prescription, dp: e.target.value})} />
                 </div>
               </div>
             </>
@@ -662,19 +911,19 @@ export default function SalesPage() {
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Ponte + Aro (mm)</label>
-              <input type="number" step="0.1" min="0" placeholder="Ex: 18" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={saleDetails.bridge_rim} onChange={(e) => setSaleDetails({...saleDetails, bridge_rim: e.target.value})} />
+              <input type="number" inputMode="decimal" step="0.1" min="0" placeholder="Ex: 18" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={saleDetails.bridge_rim} onChange={(e) => setSaleDetails({...saleDetails, bridge_rim: e.target.value})} />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Ang. Maior (°)</label>
-              <input type="number" step="0.1" min="0" placeholder="Ex: 10" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={saleDetails.major_angle} onChange={(e) => setSaleDetails({...saleDetails, major_angle: e.target.value})} />
+              <input type="number" inputMode="decimal" step="0.1" min="0" placeholder="Ex: 10" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={saleDetails.major_angle} onChange={(e) => setSaleDetails({...saleDetails, major_angle: e.target.value})} />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">DNP</label>
-              <input type="number" step="0.5" min="0" placeholder="Ex: 62" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={saleDetails.dp_os} onChange={(e) => setSaleDetails({...saleDetails, dp_os: e.target.value})} />
+              <input type="number" inputMode="decimal" step="0.5" min="0" placeholder="Ex: 62" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={saleDetails.dp_os} onChange={(e) => setSaleDetails({...saleDetails, dp_os: e.target.value})} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Altura (mm)</label>
-              <input type="number" step="0.5" min="0" placeholder="Ex: 22" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={saleDetails.altura} onChange={(e) => setSaleDetails({...saleDetails, altura: e.target.value})} />
+              <label className="block text-sm font-medium text-gray-700 mb-1">Centro Optico (mm)</label>
+              <input type="number" inputMode="decimal" step="0.5" min="0" placeholder="Ex: 22" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={saleDetails.altura} onChange={(e) => setSaleDetails({...saleDetails, altura: e.target.value})} />
             </div>
           </div>
           <div className="flex gap-2 mt-3">
@@ -743,7 +992,7 @@ export default function SalesPage() {
 
           <div className="mt-3">
             <label className="block text-sm font-medium text-gray-700 mb-1">Valor Total da Venda</label>
-            <input type="number" step="0.01" required placeholder="R$ 0.00" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 font-bold focus:ring-2 focus:ring-blue-500 outline-none" value={saleDetails.total_value} onChange={(e) => setSaleDetails({...saleDetails, total_value: e.target.value})} />
+            <input type="number" inputMode="decimal" step="0.01" required placeholder="R$ 0.00" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 font-bold focus:ring-2 focus:ring-blue-500 outline-none" value={saleDetails.total_value} onChange={(e) => setSaleDetails({...saleDetails, total_value: e.target.value})} />
           </div>
           <div className="mt-3">
             <label className="block text-sm font-medium text-gray-700 mb-1">Notas adicionais</label>
@@ -759,24 +1008,29 @@ export default function SalesPage() {
         {/* SEÇÃO 4: FINANCEIRO / PAGAMENTO */}
         <AccordionSection num={4} title="Pagamento" done={false} canOpen={section1Done && section3Done} isOpen={activeSection === 4} onToggle={() => setActiveSection(activeSection === 4 ? 0 : 4)}>
           <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-            <div>
+            <div className="sm:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">Forma de Pagamento</label>
-                <select className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={payment.method} onChange={(e) => setPayment({...payment, method: e.target.value})}>
+                <select className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={payment.method} onChange={(e) => setPayment({...payment, method: e.target.value, hasCardEntry: false})}>
                   {paymentMethods.length === 0 && <option value="">Selecione...</option>}
                   {paymentMethods.map(m => (
                     <option key={m.id} value={m.id}>{m.name}</option>
                   ))}
                 </select>
               {selectedMethod?.is_card && (
-                <p className="text-[10px] text-purple-600 mt-1">Taxa {instCountCard}x: {effectiveFeePercent}% ({formatCurrency((parseFloat(saleDetails.total_value || '0') * effectiveFeePercent) / 100)}) — recebimento integral</p>
+                <p className="text-[10px] text-purple-600 mt-1">Taxa {instCountCard}x: {effectiveFeePercent}% — recebimento integral</p>
               )}
               {paymentMethodsError && (
                 <p className="text-[10px] text-yellow-600 mt-1">Nenhum método configurado. Vá em <Link href="/settings" className="underline font-bold">Config</Link>.</p>
               )}
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Valor de Entrada</label>
-              <input type="number" step="0.01" min="0" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="R$ 0,00" value={payment.downPayment} onChange={(e) => setPayment({...payment, downPayment: e.target.value})} />
+              <label className="block text-sm font-medium text-gray-700 mb-1">Valor de Entrada (Sinal)</label>
+              <input type="number" inputMode="decimal" step="0.01" min="0" className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" placeholder="R$ 0,00" value={payment.downPayment} onChange={(e) => setPayment({...payment, downPayment: e.target.value})} />
+              {parseFloat(saleDetails.total_value) > 0 && parseFloat(payment.downPayment) > 0 && (
+                <p className="text-xs text-gray-500 mt-1">
+                  Resta: <span className="font-bold text-gray-800">{formatCurrency(Math.max(0, parseFloat(saleDetails.total_value || '0') - parseFloat(payment.downPayment || '0')))}</span>
+                </p>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Parcelas</label>
@@ -800,17 +1054,43 @@ export default function SalesPage() {
                 )}
               </select>
             </div>
-            <div>
+          </div>
+
+          {/* Card: checkbox para incluir entrada */}
+          {selectedMethod?.is_card && (
+            <label className="flex items-center gap-2 mt-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={payment.hasCardEntry}
+                onChange={(e) => setPayment({...payment, hasCardEntry: e.target.checked})}
+                className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+              />
+              <span className="text-sm font-medium text-gray-700">Incluir Entrada (recebimento separado da maquininha)</span>
+            </label>
+          )}
+
+          {/* Status da Entrada: visível quando tem entrada */}
+          {(parseFloat(payment.downPayment) > 0 || payment.hasCardEntry) && (
+            <div className="mt-3">
               <label className="block text-sm font-medium text-gray-700 mb-1">Status da Entrada</label>
-              <select className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={payment.status} onChange={(e) => setPayment({...payment, status: e.target.value})}>
+              <select className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={payment.entryStatus} onChange={(e) => setPayment({...payment, entryStatus: e.target.value})}>
                 <option value="Paid">Recebido</option>
                 <option value="Pending">Receber na Entrega</option>
               </select>
-              {selectedMethod?.is_card && (
-                <p className="text-[10px] text-gray-500 mt-1">Cartão: recebimento integral + taxa de {effectiveFeePercent}%</p>
-              )}
+              <p className="text-[11px] text-gray-400 mt-1">Pagamento da entrada: já recebido ou a receber na entrega dos óculos.</p>
             </div>
-          </div>
+          )}
+
+          {/* Status do Pagamento (à vista): sem entrada e sem parcelas */}
+          {!selectedMethod?.is_card && !parseFloat(payment.downPayment) && parseInt(payment.installments) === 0 && (
+            <div className="mt-3">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Status do Pagamento</label>
+              <select className="w-full p-2.5 bg-gray-50 border border-gray-200 rounded-xl text-gray-950 focus:ring-2 focus:ring-blue-500 outline-none" value={payment.status} onChange={(e) => setPayment({...payment, status: e.target.value})}>
+                <option value="Paid">Recebido</option>
+                <option value="Pending">Pendente</option>
+              </select>
+            </div>
+          )}
 
           {/* Data do primeiro vencimento das parcelas */}
           {!selectedMethod?.is_card && parseInt(payment.installments) > 0 && (
@@ -831,9 +1111,9 @@ export default function SalesPage() {
             className="w-full mt-4 py-3 bg-blue-600 text-white font-extrabold rounded-2xl hover:bg-blue-700 transition-all shadow-lg flex items-center justify-center gap-2"
           >
             {loading ? (
-              <><Loader2 className="animate-spin" size={20} /> Salvando tudo...</>
+              <><Loader2 className="animate-spin" size={20} /> Salvando...</>
             ) : (
-              geraOS ? 'Finalizar Venda & Gerar O.S.' : 'Finalizar Venda'
+              editOrderId ? 'Salvar Alterações' : (geraOS ? 'Finalizar Venda & Gerar O.S.' : 'Finalizar Venda')
             )}
           </button>
         </AccordionSection>
