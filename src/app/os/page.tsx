@@ -71,10 +71,10 @@ export default function OSPage() {
         os_number: formData.os_number,
         shop_id: profile.shop_id,
         frame_width: formData.frame_width || null,
-        bridge_rim: formData.bridge_rim ? parseFloat(formData.bridge_rim) : null,
-        major_angle: formData.major_angle ? parseFloat(formData.major_angle) : null,
-        dp_os: formData.dp_os ? parseFloat(formData.dp_os) : null,
-        altura: formData.altura ? parseFloat(formData.altura) : null
+        bridge_rim: formData.bridge_rim ? parseFloat(formData.bridge_rim) || null : null,
+        major_angle: formData.major_angle ? parseFloat(formData.major_angle) || null : null,
+        dp_os: formData.dp_os ? parseFloat(formData.dp_os) || null : null,
+        altura: formData.altura ? parseFloat(formData.altura) || null : null
       }]);
     
     if (!error) {
